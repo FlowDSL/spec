@@ -1,0 +1,698 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "Domain Drop Catch Flows",
+    "version": "1.0.0",
+    "description": "High-throughput domain expiry pipeline with stateful LLM analysis stage. Demonstrates mixed delivery modes: direct for fast transforms, ephemeralQueue for burst smoothing, durableQueue for expensive LLM stages, and eventBus for external publication."
+  },
+  "servers": {
+    "default": {
+      "url": "flow-runtime.internal",
+      "protocol": "hybrid",
+      "description": "Default hybrid runtime — resolves delivery mode to concrete backend"
+    }
+  },
+  "externalDocs": {
+    "asyncapi": "/asyncapi.json",
+    "openapi": "/openapi.json",
+    "description": "AsyncAPI document contains all external event schemas. OpenAPI describes HTTP management endpoints."
+  },
+  "flows": {
+    "domain_drop_pipeline": {
+      "summary": "Domain drop catch pipeline",
+      "description": "Filters, enriches, scores, and LLM-analyzes expiring domains. Designed for high-throughput batch processing with selective durability at expensive stages.",
+      "tags": ["domain", "high-throughput", "llm"],
+      "entrypoints": [
+        {
+          "message": {
+            "$ref": "asyncapi#/components/messages/DomainExpiredPayload"
+          },
+          "description": "Triggered when a domain expiry event arrives on the Kafka bus"
+        }
+      ],
+      "nodes": {
+        "rule_filter": {
+          "$ref": "#/components/nodes/RuleFilterNode"
+        },
+        "dns_check": {
+          "$ref": "#/components/nodes/DnsCheckNode"
+        },
+        "score_preselect": {
+          "$ref": "#/components/nodes/ScorePreselectNode"
+        },
+        "llm_analysis": {
+          "$ref": "#/components/nodes/LlmAnalysisNode"
+        },
+        "publish_results": {
+          "$ref": "#/components/nodes/PublishResultsNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "rule_filter",
+          "to": "dns_check",
+          "when": "output.name == 'RulePassedDomain'",
+          "description": "Fast in-process handoff — rule filtering is cheap and deterministic",
+          "delivery": {
+            "mode": "direct",
+            "batching": {
+              "enabled": true,
+              "batchSize": 1000,
+              "maxWaitMs": 50
+            },
+            "maxInFlight": 10000
+          }
+        },
+        {
+          "from": "dns_check",
+          "to": "score_preselect",
+          "description": "Redis stream smooths DNS check bursts before scoring",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis",
+            "batching": {
+              "enabled": true,
+              "batchSize": 500
+            },
+            "recovery": {
+              "replayFrom": "checkpoint:domain_ingest",
+              "strategy": "replayFromCheckpoint"
+            }
+          }
+        },
+        {
+          "from": "score_preselect",
+          "to": "llm_analysis",
+          "when": "output.name == 'DomainShortlisted'",
+          "description": "Durable handoff — LLM analysis is expensive, must not be lost on restart",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/llmExpensiveRetry"
+            }
+          }
+        },
+        {
+          "from": "llm_analysis",
+          "to": "publish_results",
+          "description": "Publish analyzed domains to Kafka for external consumers",
+          "delivery": {
+            "mode": "eventBus",
+            "eventBus": {
+              "bus": "kafka",
+              "topic": "domains.analyzed",
+              "partitionKey": "payload.domain"
+            }
+          }
+        }
+      ],
+      "defaults": {
+        "execution": {
+          "timeoutMs": 30000,
+          "maxRetries": 3
+        }
+      }
+    },
+
+    "work_email_handler": {
+      "summary": "Work email processing workflow",
+      "description": "Stateful, restart-safe workflow for processing incoming work emails. Routes by priority, triggers SMS alerts for urgent items, and generates LLM summaries.",
+      "tags": ["email", "stateful", "workflow", "llm"],
+      "entrypoints": [
+        {
+          "message": {
+            "$ref": "asyncapi#/components/messages/NewEmailReceived"
+          }
+        }
+      ],
+      "nodes": {
+        "priority_router": {
+          "$ref": "#/components/nodes/PriorityRouterNode"
+        },
+        "urgent_sms_alert": {
+          "$ref": "#/components/nodes/UrgentSmsAlertNode"
+        },
+        "llm_summary": {
+          "$ref": "#/components/nodes/LlmSummaryNode"
+        },
+        "ticket_creator": {
+          "$ref": "#/components/nodes/TicketCreatorNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "priority_router",
+          "to": "urgent_sms_alert",
+          "when": "output.name == 'UrgentEmailDetected'",
+          "description": "Urgent emails trigger durable SMS alert — must not be lost",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/urgentAlertRetry"
+            }
+          }
+        },
+        {
+          "from": "priority_router",
+          "to": "llm_summary",
+          "when": "output.name == 'EmailForSummarization'",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/llmExpensiveRetry"
+            }
+          }
+        },
+        {
+          "from": "llm_summary",
+          "to": "ticket_creator",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/urgentAlertRetry"
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "components": {
+    "nodes": {
+
+      "RuleFilterNode": {
+        "operationId": "run_domain_rule_filter",
+        "title": "Rule Filter",
+        "summary": "Apply local filtering rules to domain candidates",
+        "kind": "router",
+        "runtime": {
+          "language": "go",
+          "handler": "app.nodes.domain.RuleFilterNode",
+          "invocation": "inProcess"
+        },
+        "inputs": [
+          {
+            "name": "DomainExpiredPayload",
+            "message": {
+              "$ref": "asyncapi#/components/messages/DomainExpiredPayload"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "RulePassedDomain",
+            "message": {
+              "$ref": "#/components/packets/RulePassedDomainPacket"
+            }
+          },
+          {
+            "name": "RuleRejectedDomain",
+            "message": {
+              "$ref": "#/components/packets/RuleRejectedDomainPacket"
+            }
+          }
+        ],
+        "execution": {
+          "timeoutMs": 5000,
+          "concurrency": 500
+        },
+        "x-ui": {
+          "group": "Domain Processing",
+          "icon": "filter",
+          "color": "#3B82F6",
+          "position": { "x": 100, "y": 100 }
+        }
+      },
+
+      "DnsCheckNode": {
+        "operationId": "run_dns_check",
+        "title": "DNS Check",
+        "summary": "Resolve DNS, NS, and WHOIS data for each domain",
+        "kind": "transform",
+        "runtime": {
+          "language": "go",
+          "handler": "app.nodes.domain.DnsCheckNode",
+          "invocation": "inProcess"
+        },
+        "inputs": [
+          {
+            "name": "RulePassedDomain",
+            "message": {
+              "$ref": "#/components/packets/RulePassedDomainPacket"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "DomainEnriched",
+            "message": {
+              "$ref": "#/components/packets/DomainEnrichedPacket"
+            }
+          }
+        ],
+        "execution": {
+          "timeoutMs": 10000,
+          "concurrency": 200
+        },
+        "x-ui": {
+          "group": "Domain Processing",
+          "icon": "globe",
+          "color": "#10B981",
+          "position": { "x": 100, "y": 250 }
+        }
+      },
+
+      "ScorePreselectNode": {
+        "operationId": "run_score_preselect",
+        "title": "Score & Preselect",
+        "summary": "Score enriched domains and shortlist candidates for LLM analysis",
+        "kind": "router",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.domain.ScorePreselectNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "DomainEnriched",
+            "message": {
+              "$ref": "#/components/packets/DomainEnrichedPacket"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "DomainShortlisted",
+            "message": {
+              "$ref": "#/components/packets/DomainShortlistedPacket"
+            }
+          },
+          {
+            "name": "DomainRejected",
+            "message": {
+              "$ref": "#/components/packets/DomainRejectedPacket"
+            }
+          }
+        ],
+        "execution": {
+          "timeoutMs": 3000,
+          "concurrency": 100
+        },
+        "x-ui": {
+          "group": "Domain Processing",
+          "icon": "chart-bar",
+          "color": "#F59E0B",
+          "position": { "x": 100, "y": 400 }
+        }
+      },
+
+      "LlmAnalysisNode": {
+        "operationId": "run_llm_analysis",
+        "title": "LLM Analysis",
+        "summary": "Deep LLM-based analysis of shortlisted domain candidates",
+        "kind": "llm",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.domain.LlmAnalysisNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "DomainShortlisted",
+            "message": {
+              "$ref": "#/components/packets/DomainShortlistedPacket"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "DomainAnalyzed",
+            "message": {
+              "$ref": "#/components/packets/DomainAnalyzedPacket"
+            }
+          }
+        ],
+        "execution": {
+          "timeoutMs": 120000,
+          "concurrency": 10
+        },
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.domain + ':' + input.payload.dropDate",
+          "ttlSeconds": 86400,
+          "store": "mongo"
+        },
+        "x-ui": {
+          "group": "Analysis",
+          "icon": "cpu-chip",
+          "color": "#8B5CF6",
+          "position": { "x": 100, "y": 550 }
+        }
+      },
+
+      "PublishResultsNode": {
+        "operationId": "run_publish_results",
+        "title": "Publish Results",
+        "summary": "Publish ranked domain results to external event bus",
+        "kind": "publish",
+        "runtime": {
+          "language": "go",
+          "handler": "app.nodes.domain.PublishResultsNode",
+          "invocation": "inProcess"
+        },
+        "inputs": [
+          {
+            "name": "DomainAnalyzed",
+            "message": {
+              "$ref": "#/components/packets/DomainAnalyzedPacket"
+            }
+          }
+        ],
+        "outputs": [],
+        "execution": {
+          "timeoutMs": 5000,
+          "concurrency": 50
+        },
+        "x-ui": {
+          "group": "Output",
+          "icon": "arrow-up-circle",
+          "color": "#06B6D4",
+          "position": { "x": 100, "y": 700 }
+        }
+      },
+
+      "PriorityRouterNode": {
+        "operationId": "run_priority_router",
+        "title": "Priority Router",
+        "summary": "Route incoming emails by urgency and content type",
+        "kind": "router",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.email.PriorityRouterNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "NewEmailReceived",
+            "message": {
+              "$ref": "asyncapi#/components/messages/NewEmailReceived"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "UrgentEmailDetected",
+            "message": {
+              "$ref": "#/components/packets/UrgentEmailPacket"
+            }
+          },
+          {
+            "name": "EmailForSummarization",
+            "message": {
+              "$ref": "#/components/packets/EmailSummarizationPacket"
+            }
+          }
+        ],
+        "execution": {
+          "timeoutMs": 5000,
+          "concurrency": 50
+        }
+      },
+
+      "UrgentSmsAlertNode": {
+        "operationId": "run_urgent_sms_alert",
+        "title": "Urgent SMS Alert",
+        "summary": "Send SMS alert for urgent emails",
+        "kind": "action",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.email.UrgentSmsAlertNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "UrgentEmailDetected",
+            "message": {
+              "$ref": "#/components/packets/UrgentEmailPacket"
+            }
+          }
+        ],
+        "outputs": [],
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.emailId + ':sms'",
+          "ttlSeconds": 3600,
+          "store": "redis"
+        },
+        "execution": {
+          "timeoutMs": 10000,
+          "concurrency": 20
+        }
+      },
+
+      "LlmSummaryNode": {
+        "operationId": "run_llm_summary",
+        "title": "LLM Summary",
+        "summary": "Generate AI summary of email content",
+        "kind": "llm",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.email.LlmSummaryNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "EmailForSummarization",
+            "message": {
+              "$ref": "#/components/packets/EmailSummarizationPacket"
+            }
+          }
+        ],
+        "outputs": [
+          {
+            "name": "EmailSummarized",
+            "message": {
+              "$ref": "#/components/packets/EmailSummarizedPacket"
+            }
+          }
+        ],
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.emailId + ':summary'",
+          "ttlSeconds": 86400,
+          "store": "mongo"
+        },
+        "execution": {
+          "timeoutMs": 60000,
+          "concurrency": 5
+        }
+      },
+
+      "TicketCreatorNode": {
+        "operationId": "run_ticket_creator",
+        "title": "Ticket Creator",
+        "summary": "Create a support ticket from email summary",
+        "kind": "action",
+        "runtime": {
+          "language": "python",
+          "handler": "app.nodes.email.TicketCreatorNode",
+          "invocation": "http"
+        },
+        "inputs": [
+          {
+            "name": "EmailSummarized",
+            "message": {
+              "$ref": "#/components/packets/EmailSummarizedPacket"
+            }
+          }
+        ],
+        "outputs": [],
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.emailId + ':ticket'",
+          "ttlSeconds": 86400,
+          "store": "mongo"
+        },
+        "execution": {
+          "timeoutMs": 15000,
+          "concurrency": 20
+        }
+      }
+    },
+
+    "policies": {
+      "llmExpensiveRetry": {
+        "maxAttempts": 5,
+        "initialDelayMs": 2000,
+        "backoff": "exponential",
+        "maxDelayMs": 120000,
+        "deadLetterQueue": true
+      },
+      "urgentAlertRetry": {
+        "maxAttempts": 10,
+        "initialDelayMs": 500,
+        "backoff": "exponential",
+        "maxDelayMs": 30000,
+        "deadLetterQueue": true
+      },
+      "fastRetry": {
+        "maxAttempts": 3,
+        "initialDelayMs": 100,
+        "backoff": "fixed",
+        "maxDelayMs": 100,
+        "deadLetterQueue": false
+      }
+    },
+
+    "packets": {
+      "RulePassedDomainPacket": {
+        "type": "object",
+        "description": "A domain that passed local rule filtering.",
+        "required": ["domain", "dropDate"],
+        "properties": {
+          "domain": { "type": "string", "examples": ["example.com"] },
+          "dropDate": { "type": "string", "format": "date" },
+          "tld": { "type": "string", "examples": ["com"] },
+          "registrar": { "type": "string" }
+        }
+      },
+      "RuleRejectedDomainPacket": {
+        "type": "object",
+        "description": "A domain rejected by rule filtering.",
+        "required": ["domain", "reason"],
+        "properties": {
+          "domain": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      },
+      "DomainEnrichedPacket": {
+        "type": "object",
+        "description": "A domain enriched with DNS, NS, and WHOIS data.",
+        "required": ["domain", "dns"],
+        "properties": {
+          "domain": { "type": "string" },
+          "dropDate": { "type": "string", "format": "date" },
+          "dns": {
+            "type": "object",
+            "properties": {
+              "aRecords": { "type": "array", "items": { "type": "string" } },
+              "nsRecords": { "type": "array", "items": { "type": "string" } },
+              "mxRecords": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "whois": {
+            "type": "object",
+            "properties": {
+              "registrar": { "type": "string" },
+              "createdDate": { "type": "string", "format": "date" },
+              "age": { "type": "integer", "description": "Domain age in days" }
+            }
+          }
+        }
+      },
+      "DomainShortlistedPacket": {
+        "type": "object",
+        "description": "A domain shortlisted for expensive LLM analysis.",
+        "required": ["domain", "score"],
+        "properties": {
+          "domain": { "type": "string" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "dropDate": { "type": "string", "format": "date" },
+          "signals": {
+            "type": "object",
+            "description": "Scoring signals that contributed to shortlisting."
+          }
+        }
+      },
+      "DomainRejectedPacket": {
+        "type": "object",
+        "required": ["domain", "score", "reason"],
+        "properties": {
+          "domain": { "type": "string" },
+          "score": { "type": "number" },
+          "reason": { "type": "string" }
+        }
+      },
+      "DomainAnalyzedPacket": {
+        "type": "object",
+        "description": "A fully LLM-analyzed domain with final ranking.",
+        "required": ["domain", "finalScore", "analysis"],
+        "properties": {
+          "domain": { "type": "string" },
+          "finalScore": { "type": "number", "minimum": 0, "maximum": 1 },
+          "analysis": {
+            "type": "object",
+            "properties": {
+              "summary": { "type": "string" },
+              "useCases": { "type": "array", "items": { "type": "string" } },
+              "brandability": { "type": "number" },
+              "memorability": { "type": "number" }
+            }
+          }
+        }
+      },
+      "UrgentEmailPacket": {
+        "type": "object",
+        "required": ["emailId", "subject", "from", "urgencyReason"],
+        "properties": {
+          "emailId": { "type": "string" },
+          "subject": { "type": "string" },
+          "from": { "type": "string" },
+          "urgencyReason": { "type": "string" },
+          "receivedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EmailSummarizationPacket": {
+        "type": "object",
+        "required": ["emailId", "subject", "body"],
+        "properties": {
+          "emailId": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "from": { "type": "string" },
+          "receivedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EmailSummarizedPacket": {
+        "type": "object",
+        "required": ["emailId", "summary"],
+        "properties": {
+          "emailId": { "type": "string" },
+          "summary": { "type": "string" },
+          "keyPoints": { "type": "array", "items": { "type": "string" } },
+          "suggestedAction": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+
+    "runtimeBindings": {
+      "mongoPackets": {
+        "type": "mongo",
+        "mongo": {
+          "collection": "flow_packets",
+          "database": "flowdsl"
+        }
+      },
+      "redisEphemeral": {
+        "type": "redis",
+        "redis": {
+          "stream": "flow.ephemeral.domains",
+          "keyPrefix": "flowdsl:"
+        }
+      },
+      "kafkaResults": {
+        "type": "kafka",
+        "kafka": {
+          "topic": "domains.analyzed",
+          "partitions": 12,
+          "replicationFactor": 3
+        }
+      }
+    }
+  }
+}

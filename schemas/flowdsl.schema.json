@@ -1,0 +1,775 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flowdsl.com/schemas/v1/flowdsl.schema.json",
+  "title": "FlowDSL",
+  "description": "FlowDSL v1.0.0 — The open specification for describing executable event-driven flow graphs. Nodes define business logic. Edges define delivery semantics. The runtime enforces guarantees.",
+  "type": "object",
+  "required": ["flowdsl", "info", "flows"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "flowdsl": {
+      "type": "string",
+      "description": "The FlowDSL specification version this document uses.",
+      "enum": ["1.0.0"],
+      "examples": ["1.0.0"]
+    },
+
+    "info": {
+      "$ref": "#/definitions/Info"
+    },
+
+    "servers": {
+      "type": "object",
+      "description": "Runtime server definitions. Keys are server names.",
+      "additionalProperties": {
+        "$ref": "#/definitions/Server"
+      }
+    },
+
+    "externalDocs": {
+      "$ref": "#/definitions/ExternalDocs"
+    },
+
+    "flows": {
+      "type": "object",
+      "description": "Named flow definitions. Each key is a flow ID.",
+      "additionalProperties": {
+        "$ref": "#/definitions/Flow"
+      },
+      "minProperties": 1
+    },
+
+    "components": {
+      "$ref": "#/definitions/Components"
+    }
+  },
+
+  "patternProperties": {
+    "^x-": {
+      "$ref": "#/definitions/Extension"
+    }
+  },
+
+  "definitions": {
+
+    "Info": {
+      "type": "object",
+      "description": "Metadata about the FlowDSL document.",
+      "required": ["title", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of this flow document.",
+          "examples": ["Domain Processing Flows"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of this flow document (semver recommended).",
+          "examples": ["1.0.0"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what this document covers."
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "url": { "type": "string", "format": "uri" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "license": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "Server": {
+      "type": "object",
+      "description": "A runtime server definition.",
+      "required": ["url", "protocol"],
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "URL or hostname of the runtime server."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Protocol used by this server.",
+          "enum": ["hybrid", "kafka", "redis", "mongo", "http", "grpc"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "default": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "ExternalDocs": {
+      "type": "object",
+      "description": "Links to external specification documents this flow references.",
+      "additionalProperties": false,
+      "properties": {
+        "asyncapi": {
+          "type": "string",
+          "description": "URL or path to the AsyncAPI document. Used to resolve asyncapi#/... $refs.",
+          "examples": ["/asyncapi.json", "https://api.example.com/asyncapi.json"]
+        },
+        "openapi": {
+          "type": "string",
+          "description": "URL or path to the OpenAPI document.",
+          "examples": ["/openapi.json"]
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "Flow": {
+      "type": "object",
+      "description": "A named executable flow graph — a coherent processing pipeline.",
+      "required": ["entrypoints", "nodes", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Short human-readable summary of this flow.",
+          "examples": ["Domain drop catch pipeline"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Full description of this flow's purpose and behavior."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional tags for grouping and filtering in the Studio."
+        },
+        "entrypoints": {
+          "type": "array",
+          "description": "One or more entry messages that trigger this flow.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/Entrypoint"
+          }
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Named node instances in this flow. Keys are node IDs used in edges.",
+          "additionalProperties": {
+            "oneOf": [
+              { "$ref": "#/definitions/Node" },
+              { "$ref": "#/definitions/Ref" }
+            ]
+          }
+        },
+        "edges": {
+          "type": "array",
+          "description": "Edges connecting nodes. Each edge defines delivery semantics.",
+          "items": {
+            "$ref": "#/definitions/Edge"
+          }
+        },
+        "defaults": {
+          "$ref": "#/definitions/FlowDefaults"
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "Entrypoint": {
+      "type": "object",
+      "description": "A trigger message that starts a flow.",
+      "required": ["message"],
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "$ref": "#/definitions/MessageRef"
+        },
+        "description": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string",
+          "description": "Optional expression to filter which incoming messages trigger this flow.",
+          "examples": ["message.payload.priority == 'urgent'"]
+        }
+      }
+    },
+
+    "Node": {
+      "type": "object",
+      "description": "An executable processing unit. Receives typed input, performs logic, emits typed outputs.",
+      "required": ["operationId", "runtime"],
+      "additionalProperties": false,
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "description": "Unique identifier for this node operation. Used for tracing and registry lookup.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "examples": ["run_domain_rule_filter"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title for this node.",
+          "examples": ["RuleFilterNode"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short description of what this node does."
+        },
+        "description": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Semantic category of this node.",
+          "enum": [
+            "source",
+            "transform",
+            "router",
+            "llm",
+            "action",
+            "checkpoint",
+            "publish",
+            "terminal",
+            "integration"
+          ]
+        },
+        "runtime": {
+          "$ref": "#/definitions/NodeRuntime"
+        },
+        "inputs": {
+          "type": "array",
+          "description": "Typed input messages this node accepts.",
+          "items": {
+            "$ref": "#/definitions/NodePort"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "description": "Typed output messages this node may emit. Each output can trigger a different edge.",
+          "items": {
+            "$ref": "#/definitions/NodePort"
+          }
+        },
+        "execution": {
+          "$ref": "#/definitions/ExecutionConfig"
+        },
+        "idempotency": {
+          "$ref": "#/definitions/IdempotencyConfig"
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "NodeRuntime": {
+      "type": "object",
+      "description": "Runtime configuration for a node — language, handler, and invocation mode.",
+      "required": ["language", "handler"],
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "type": "string",
+          "description": "Implementation language of this node.",
+          "enum": ["go", "python", "nodejs"]
+        },
+        "handler": {
+          "type": "string",
+          "description": "Fully-qualified handler path or class name.",
+          "examples": [
+            "app.nodes.domain.RuleFilterNode",
+            "nodes/domain/rule_filter.RuleFilterNode"
+          ]
+        },
+        "invocation": {
+          "type": "string",
+          "description": "How this node is invoked by the runtime.",
+          "enum": ["inProcess", "http", "kafka", "grpc"],
+          "default": "inProcess"
+        },
+        "image": {
+          "type": "string",
+          "description": "Optional container image for isolated node execution.",
+          "examples": ["ghcr.io/myorg/domain-nodes:latest"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the node implementation.",
+          "examples": ["1.2.0"]
+        }
+      }
+    },
+
+    "NodePort": {
+      "type": "object",
+      "description": "A typed input or output port on a node.",
+      "required": ["message"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name. Used in edge 'when' conditions to route specific outputs.",
+          "examples": ["RulePassedDomain", "RuleRejectedDomain"]
+        },
+        "message": {
+          "$ref": "#/definitions/MessageRef"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+
+    "MessageRef": {
+      "type": "object",
+      "description": "A reference to a message schema. May reference AsyncAPI, local components, or inline schema.",
+      "additionalProperties": false,
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "description": "JSON Reference to a message definition. Supports asyncapi# and local # prefixes.",
+          "examples": [
+            "asyncapi#/components/messages/DomainExpiredPayload",
+            "#/components/packets/RulePassedDomainPacket"
+          ]
+        },
+        "schema": {
+          "type": "object",
+          "description": "Inline JSON Schema for the message payload (use $ref instead when possible)."
+        }
+      }
+    },
+
+    "ExecutionConfig": {
+      "type": "object",
+      "description": "Runtime execution parameters for a node.",
+      "additionalProperties": false,
+      "properties": {
+        "timeoutMs": {
+          "type": "integer",
+          "description": "Maximum execution time in milliseconds before the node is considered failed.",
+          "minimum": 1,
+          "examples": [10000]
+        },
+        "concurrency": {
+          "type": "integer",
+          "description": "Maximum concurrent executions of this node.",
+          "minimum": 1,
+          "examples": [200]
+        },
+        "maxRetries": {
+          "type": "integer",
+          "description": "Maximum number of retry attempts on failure.",
+          "minimum": 0,
+          "default": 3
+        }
+      }
+    },
+
+    "IdempotencyConfig": {
+      "type": "object",
+      "description": "Configuration for idempotent side effect tracking.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "keyExpression": {
+          "type": "string",
+          "description": "Expression to derive idempotency key from input message.",
+          "examples": ["input.payload.entityId + ':' + input.payload.action"]
+        },
+        "ttlSeconds": {
+          "type": "integer",
+          "description": "How long to retain the idempotency record.",
+          "examples": [86400]
+        },
+        "store": {
+          "type": "string",
+          "enum": ["mongo", "redis"],
+          "default": "mongo"
+        }
+      }
+    },
+
+    "Edge": {
+      "type": "object",
+      "description": "A directed connection between two nodes, with delivery semantics.",
+      "required": ["from", "to", "delivery"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "ID of the source node (must match a key in flow.nodes).",
+          "examples": ["rule_filter"]
+        },
+        "to": {
+          "type": "string",
+          "description": "ID of the destination node (must match a key in flow.nodes).",
+          "examples": ["dns_check"]
+        },
+        "when": {
+          "type": "string",
+          "description": "Optional condition expression. Edge is only followed when this evaluates to true.",
+          "examples": [
+            "output.name == 'RulePassedDomain'",
+            "output.payload.score > 0.7"
+          ]
+        },
+        "delivery": {
+          "$ref": "#/definitions/DeliveryPolicy"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "DeliveryPolicy": {
+      "type": "object",
+      "description": "Defines how data is handed off between two nodes. The core of FlowDSL's transport-agnostic design.",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Delivery mode for this edge. Determines durability, replay, and latency guarantees.",
+          "enum": ["direct", "ephemeralQueue", "checkpoint", "durableQueue", "eventBus"]
+        },
+        "backend": {
+          "type": "string",
+          "description": "Concrete backend for ephemeralQueue or checkpoint modes.",
+          "enum": ["redis", "mongo", "kafka", "memory"],
+          "examples": ["redis"]
+        },
+        "store": {
+          "type": "string",
+          "description": "Storage backend for durableQueue and checkpoint modes.",
+          "enum": ["mongo", "redis"],
+          "examples": ["mongo"]
+        },
+        "batching": {
+          "$ref": "#/definitions/BatchingConfig"
+        },
+        "maxInFlight": {
+          "type": "integer",
+          "description": "Maximum number of in-flight messages on this edge at any time.",
+          "minimum": 1,
+          "examples": [10000]
+        },
+        "retryPolicy": {
+          "oneOf": [
+            { "$ref": "#/definitions/RetryPolicy" },
+            { "$ref": "#/definitions/Ref" }
+          ]
+        },
+        "recovery": {
+          "$ref": "#/definitions/RecoveryConfig"
+        },
+        "eventBus": {
+          "$ref": "#/definitions/EventBusConfig"
+        },
+        "ordering": {
+          "type": "string",
+          "description": "Message ordering guarantee on this edge.",
+          "enum": ["none", "perKey", "strict"],
+          "default": "none"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Processing priority for this edge (higher = processed first).",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 5
+        }
+      },
+
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "eventBus" } } },
+          "then": { "required": ["eventBus"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "durableQueue" } } },
+          "then": { "required": ["store"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "ephemeralQueue" } } },
+          "then": { "required": ["backend"] }
+        }
+      ]
+    },
+
+    "BatchingConfig": {
+      "type": "object",
+      "description": "Batching configuration for edges that support it.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "batchSize": {
+          "type": "integer",
+          "description": "Number of messages per batch.",
+          "minimum": 1,
+          "examples": [1000, 500]
+        },
+        "maxWaitMs": {
+          "type": "integer",
+          "description": "Maximum time to wait before flushing an incomplete batch.",
+          "minimum": 0,
+          "examples": [100]
+        }
+      }
+    },
+
+    "RetryPolicy": {
+      "type": "object",
+      "description": "Retry behavior for a failed edge delivery or node execution.",
+      "additionalProperties": false,
+      "properties": {
+        "maxAttempts": {
+          "type": "integer",
+          "description": "Maximum total attempts including the first.",
+          "minimum": 1,
+          "examples": [5]
+        },
+        "initialDelayMs": {
+          "type": "integer",
+          "description": "Delay before first retry in milliseconds.",
+          "minimum": 0,
+          "examples": [1000]
+        },
+        "backoff": {
+          "type": "string",
+          "description": "Backoff strategy between retries.",
+          "enum": ["fixed", "exponential", "linear"],
+          "default": "exponential"
+        },
+        "maxDelayMs": {
+          "type": "integer",
+          "description": "Maximum delay between retries in milliseconds.",
+          "examples": [60000]
+        },
+        "deadLetterQueue": {
+          "type": "boolean",
+          "description": "Whether to route to dead letter queue after exhausting retries.",
+          "default": true
+        }
+      }
+    },
+
+    "RecoveryConfig": {
+      "type": "object",
+      "description": "Recovery configuration for non-durable edges — defines where replay starts.",
+      "additionalProperties": false,
+      "properties": {
+        "replayFrom": {
+          "type": "string",
+          "description": "Reference to a checkpoint or durable boundary to replay from on restart.",
+          "examples": ["checkpoint:domain_ingest", "entrypoint"]
+        },
+        "strategy": {
+          "type": "string",
+          "description": "Recovery strategy when the edge has no durable state.",
+          "enum": ["replayFromCheckpoint", "replayFromEntrypoint", "skip", "fail"],
+          "default": "replayFromCheckpoint"
+        }
+      }
+    },
+
+    "EventBusConfig": {
+      "type": "object",
+      "description": "Configuration for eventBus delivery mode — publishes to an external event broker.",
+      "required": ["bus", "topic"],
+      "additionalProperties": false,
+      "properties": {
+        "bus": {
+          "type": "string",
+          "description": "The event bus backend to publish to.",
+          "enum": ["kafka", "redis", "nats"],
+          "examples": ["kafka"]
+        },
+        "topic": {
+          "type": "string",
+          "description": "Topic or channel name to publish to.",
+          "examples": ["domains.analyzed", "flow.results.ranked"]
+        },
+        "partitionKey": {
+          "type": "string",
+          "description": "Expression to derive the partition key from the message payload.",
+          "examples": ["payload.domain"]
+        }
+      }
+    },
+
+    "FlowDefaults": {
+      "type": "object",
+      "description": "Flow-level defaults applied to all nodes and edges unless overridden.",
+      "additionalProperties": false,
+      "properties": {
+        "retryPolicy": {
+          "oneOf": [
+            { "$ref": "#/definitions/RetryPolicy" },
+            { "$ref": "#/definitions/Ref" }
+          ]
+        },
+        "execution": {
+          "$ref": "#/definitions/ExecutionConfig"
+        }
+      }
+    },
+
+    "Components": {
+      "type": "object",
+      "description": "Reusable component definitions referenced via $ref throughout the document.",
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "object",
+          "description": "Reusable node definitions.",
+          "additionalProperties": { "$ref": "#/definitions/Node" }
+        },
+        "edges": {
+          "type": "object",
+          "description": "Reusable edge definitions.",
+          "additionalProperties": { "$ref": "#/definitions/Edge" }
+        },
+        "policies": {
+          "type": "object",
+          "description": "Reusable retry policy definitions.",
+          "additionalProperties": { "$ref": "#/definitions/RetryPolicy" }
+        },
+        "packets": {
+          "type": "object",
+          "description": "Internal packet schemas — typed message payloads that do not appear in AsyncAPI.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A JSON Schema definition for an internal packet type."
+          }
+        },
+        "schemas": {
+          "type": "object",
+          "description": "Shared JSON Schema definitions for reuse across packets and node ports.",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "runtimeBindings": {
+          "type": "object",
+          "description": "Named runtime backend configurations.",
+          "additionalProperties": {
+            "$ref": "#/definitions/RuntimeBinding"
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "RuntimeBinding": {
+      "type": "object",
+      "description": "A named runtime backend binding (MongoDB collection, Redis stream, Kafka topic config).",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["mongo", "redis", "kafka"]
+        },
+        "mongo": {
+          "type": "object",
+          "properties": {
+            "collection": { "type": "string", "examples": ["flow_packets"] },
+            "database": { "type": "string" }
+          }
+        },
+        "redis": {
+          "type": "object",
+          "properties": {
+            "stream": { "type": "string", "examples": ["flow.ephemeral.domains"] },
+            "keyPrefix": { "type": "string" }
+          }
+        },
+        "kafka": {
+          "type": "object",
+          "properties": {
+            "topic": { "type": "string", "examples": ["domains.analyzed"] },
+            "partitions": { "type": "integer", "minimum": 1 },
+            "replicationFactor": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+
+    "Ref": {
+      "type": "object",
+      "description": "A JSON Reference to another definition.",
+      "required": ["$ref"],
+      "additionalProperties": false,
+      "properties": {
+        "$ref": {
+          "type": "string",
+          "description": "JSON Reference string.",
+          "examples": [
+            "#/components/nodes/RuleFilterNode",
+            "#/components/policies/llmExpensiveRetry",
+            "asyncapi#/components/messages/DomainExpiredPayload"
+          ]
+        }
+      }
+    },
+
+    "Extension": {
+      "description": "Vendor extension field. Any value is permitted under x-* keys.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "object" },
+        { "type": "array" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

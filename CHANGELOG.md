@@ -9,6 +9,39 @@ FlowDSL follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+#### Node Manifest format
+- `flowdsl-node.schema.json` — JSON Schema Draft-07 for the FlowDSL Node Manifest format (`flowdsl-node.json`)
+  - Full node identity: `id`, `name`, `version`, `summary`, `description`, `kind`, `language`
+  - Author and publication metadata: `author`, `license`, `repoUrl`, `docsUrl`, `publishedAt`, `published`
+  - Visual hints: `icon`, `color`, `tags`
+  - Runtime configuration: `runtime.handler`, `runtime.invocation`, `runtime.image`
+  - Typed port contracts: `inputs` and `outputs` as `NodePort` arrays with inline JSON Schema
+  - `settingsSchema` — JSON Schema object that drives the Studio settings form, with `x-ui` extensions for `placeholder`, `group`, `order`, and `secret`
+  - `dependencies`, `minRuntimeVersion` for ecosystem compatibility
+
+#### Registry Index format
+- `flowdsl-registry.schema.json` — JSON Schema for the registry index served at `repo.flowdsl.com/registry.json`
+  - Lightweight `RegistryEntry` objects for search, browsing, and Studio palette population
+  - Fields: `id`, `name`, `version`, `summary`, `kind`, `language`, `icon`, `color`, `tags`, `author.name`, `repoUrl`, `docsUrl`, `publishedAt`, `downloadCount`
+
+#### Core node manifests (`examples/nodes/`)
+- `email-fetcher.flowdsl-node.json` — IMAP/POP3 mailbox poller (Python, source)
+- `llm-analyzer.flowdsl-node.json` — LLM-powered payload analysis with configurable model and prompt (Python, llm)
+- `llm-router.flowdsl-node.json` — LLM-based dynamic routing with per-route output ports (Python, router)
+- `http-fetcher.flowdsl-node.json` — HTTP endpoint poller with auth support (Go, source)
+- `webhook-receiver.flowdsl-node.json` — Inbound HTTP webhook listener with HMAC verification (Go, source)
+- `mongo-reader.flowdsl-node.json` — MongoDB collection poller (Go, source)
+- `mongo-writer.flowdsl-node.json` — MongoDB insert/update/upsert writer (Go, action)
+- `slack-notifier.flowdsl-node.json` — Slack Incoming Webhook message sender with Handlebars templates (Go, action)
+- `json-transformer.flowdsl-node.json` — jq-based JSON payload transformation (Go, transform)
+- `filter-node.flowdsl-node.json` — Boolean condition router with Passed/Failed outputs (Go, router)
+- `sms-alert.flowdsl-node.json` — Twilio/Vonage SMS sender with Handlebars templates (Python, action)
+
+#### Documentation
+- `docs/node-manifest.md` — Specification reference for the FlowDSL Node Manifest format, including settingsSchema field reference and Studio form rendering rules
+
 ---
 
 ## [1.0.0] — 2025 (initial draft)

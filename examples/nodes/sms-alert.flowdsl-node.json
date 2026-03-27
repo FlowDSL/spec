@@ -1,0 +1,83 @@
+{
+  "id": "flowdsl/sms-alert",
+  "name": "SMS Alert",
+  "version": "1.0.0",
+  "summary": "Sends an SMS message using Twilio or Vonage when triggered by an incoming alert payload.",
+  "description": "# SMS Alert\n\nSends an SMS to the configured recipient using Twilio or Vonage. The message body is rendered from a Handlebars template that can reference any field in the incoming payload.\n\n## Use cases\n- Page on-call engineers with critical alert details\n- Send order confirmation or shipping notifications\n- Deliver OTP or verification codes\n\n## Notes\n- `authToken` and `accountSid` are stored securely and never exported\n- The `messageTemplate` supports Handlebars syntax: `{{field}}`\n- SMS messages are limited to 160 characters per segment; longer messages are split automatically\n- For Vonage, `accountSid` holds the API key and `authToken` holds the API secret",
+  "kind": "action",
+  "language": "python",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-python",
+  "docsUrl": "https://flowdsl.com/nodes/sms-alert",
+  "icon": "📱",
+  "color": "#EF4444",
+  "tags": ["sms", "twilio", "vonage", "alert", "notification", "action"],
+  "runtime": {
+    "handler": "flowdsl.nodes.sms.SmsAlertNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AlertPayload",
+      "description": "Alert or event payload. Fields are accessible in the messageTemplate via Handlebars syntax.",
+      "schema": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  ],
+  "outputs": [],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["provider", "accountSid", "authToken", "fromNumber", "toNumber", "messageTemplate"],
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Provider",
+        "description": "SMS provider to use.",
+        "enum": ["twilio", "vonage"],
+        "default": "twilio",
+        "x-ui": { "order": 1, "group": "Provider" }
+      },
+      "accountSid": {
+        "type": "string",
+        "title": "Account SID / API Key",
+        "description": "Twilio Account SID or Vonage API Key.",
+        "x-ui": { "order": 2, "group": "Provider" }
+      },
+      "authToken": {
+        "type": "string",
+        "title": "Auth Token / API Secret",
+        "description": "Twilio Auth Token or Vonage API Secret. Stored securely.",
+        "format": "password",
+        "x-ui": { "order": 3, "group": "Provider", "secret": true }
+      },
+      "fromNumber": {
+        "type": "string",
+        "title": "From Number",
+        "description": "Sender phone number in E.164 format.",
+        "x-ui": { "placeholder": "+15551234567", "order": 4, "group": "Message" }
+      },
+      "toNumber": {
+        "type": "string",
+        "title": "To Number",
+        "description": "Recipient phone number in E.164 format.",
+        "x-ui": { "placeholder": "+15559876543", "order": 5, "group": "Message" }
+      },
+      "messageTemplate": {
+        "type": "string",
+        "title": "Message Template",
+        "description": "Handlebars template for the SMS body. Reference payload fields with {{fieldName}}.",
+        "x-ui": { "placeholder": "Alert: {{title}} at {{timestamp}}. Score: {{score}}", "order": 6, "group": "Message" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

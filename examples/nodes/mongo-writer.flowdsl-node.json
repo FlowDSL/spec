@@ -1,0 +1,66 @@
+{
+  "id": "flowdsl/mongo-writer",
+  "name": "MongoDB Writer",
+  "version": "1.0.0",
+  "summary": "Writes the incoming payload to a MongoDB collection as an insert, update, or upsert operation.",
+  "description": "# MongoDB Writer\n\nPersists the incoming payload to a MongoDB collection. Supports insert, update, and upsert operations. The `filter` expression identifies the document to update when using `update` or `upsert` mode.\n\n## Use cases\n- Persist processed results to a database\n- Update records after transformation or enrichment\n- Upsert to create-or-update records idempotently\n\n## Notes\n- `connectionId` references a saved connection from the runtime connection store\n- For `update` and `upsert`, `filter` must be a valid JSON MongoDB query expression\n- The full incoming payload is used as the document body or the `$set` value for updates",
+  "kind": "action",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/mongo-writer",
+  "icon": "💾",
+  "color": "#10B981",
+  "tags": ["mongodb", "database", "action", "write", "nosql"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.MongoWriterNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "The document to write. The full payload is used as the document body or update value."
+    }
+  ],
+  "outputs": [],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["connectionId", "collection", "operation"],
+    "properties": {
+      "connectionId": {
+        "type": "string",
+        "title": "Connection",
+        "description": "ID of a saved MongoDB connection in the runtime connection store.",
+        "x-ui": { "placeholder": "my-mongo-connection", "order": 1, "group": "Connection" }
+      },
+      "collection": {
+        "type": "string",
+        "title": "Collection",
+        "description": "Name of the MongoDB collection to write to.",
+        "x-ui": { "placeholder": "results", "order": 2, "group": "Write" }
+      },
+      "operation": {
+        "type": "string",
+        "title": "Operation",
+        "description": "Write operation to perform.",
+        "enum": ["insert", "update", "upsert"],
+        "default": "insert",
+        "x-ui": { "order": 3, "group": "Write" }
+      },
+      "filter": {
+        "type": "string",
+        "title": "Filter",
+        "description": "MongoDB query expression used to identify the document for update or upsert. Required when operation is 'update' or 'upsert'.",
+        "x-ui": { "placeholder": "{\"externalId\": \"{{payload.id}}\"}", "order": 4, "group": "Write" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

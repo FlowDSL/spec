@@ -1,0 +1,69 @@
+{
+  "id": "flowdsl/filter",
+  "name": "Filter",
+  "version": "1.0.0",
+  "summary": "Evaluates a condition expression on each payload and routes to Passed or Failed output ports.",
+  "description": "# Filter\n\nEvaluates a boolean condition expression against the incoming payload. Payloads that satisfy the condition are emitted on `Passed`; those that do not are emitted on `Failed`. Both output ports carry the original payload unchanged.\n\n## Use cases\n- Gate a flow on a confidence score threshold\n- Separate valid records from invalid ones\n- Route high-priority items to a fast path\n\n## Condition syntax\n\nConditions use a simple expression language where `payload` refers to the incoming object:\n\n```\npayload.score > 0.7\npayload.status == \"active\"\npayload.tags contains \"urgent\"\n```\n\nComplex expressions with `&&` and `||` are supported.",
+  "kind": "router",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/filter",
+  "icon": "🔍",
+  "color": "#F59E0B",
+  "tags": ["filter", "router", "condition", "gate", "branching"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.FilterNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "Any payload to evaluate the condition against."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Passed",
+      "description": "Emitted when the condition evaluates to true. Contains the original payload unchanged."
+    },
+    {
+      "name": "Failed",
+      "description": "Emitted when the condition evaluates to false. Contains the original payload unchanged."
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["condition"],
+    "properties": {
+      "condition": {
+        "type": "string",
+        "title": "Condition",
+        "description": "Boolean expression to evaluate. Use 'payload' to reference fields of the incoming object.",
+        "x-ui": { "placeholder": "payload.score > 0.7", "order": 1 }
+      },
+      "passLabel": {
+        "type": "string",
+        "title": "Pass Label",
+        "description": "Display label for the Passed output port in Studio.",
+        "default": "Passed",
+        "x-ui": { "order": 2, "group": "Labels" }
+      },
+      "failLabel": {
+        "type": "string",
+        "title": "Fail Label",
+        "description": "Display label for the Failed output port in Studio.",
+        "default": "Failed",
+        "x-ui": { "order": 3, "group": "Labels" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

@@ -1,0 +1,351 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flowdsl.com/schemas/v1/flowdsl-node.schema.json",
+  "title": "FlowDSL Node Manifest",
+  "description": "FlowDSL Node Manifest v1.0.0 — describes a single installable node in the repo.flowdsl.com registry. A node manifest captures identity, runtime requirements, port contracts, and the settings schema used to render configuration forms in FlowDSL Studio.",
+  "type": "object",
+  "required": ["id", "name", "version", "summary", "kind", "language", "author", "license", "runtime", "published"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "description": "Unique node identifier in the registry. Format: <namespace>/<slug>.",
+      "pattern": "^[a-z0-9_-]+/[a-z0-9_-]+$",
+      "examples": ["flowdsl/email-fetcher", "acme/crm-lookup"]
+    },
+
+    "name": {
+      "type": "string",
+      "description": "Human-readable display name shown in Studio and the marketplace.",
+      "examples": ["Email Fetcher", "CRM Lookup"]
+    },
+
+    "version": {
+      "type": "string",
+      "description": "Semver version of this node manifest.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(\\.(0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?$",
+      "examples": ["1.0.0", "2.1.0-rc1"]
+    },
+
+    "description": {
+      "type": "string",
+      "description": "Full markdown description of the node. Rendered on the registry detail page."
+    },
+
+    "summary": {
+      "type": "string",
+      "description": "One-line description shown in search results and Studio tooltips."
+    },
+
+    "kind": {
+      "type": "string",
+      "description": "Functional category of the node. Controls Studio palette grouping and validation rules.",
+      "enum": ["source", "transform", "router", "llm", "action", "checkpoint", "publish", "terminal", "integration"]
+    },
+
+    "language": {
+      "type": "string",
+      "description": "Implementation language of the node handler.",
+      "enum": ["go", "python", "nodejs"]
+    },
+
+    "author": {
+      "$ref": "#/definitions/Author"
+    },
+
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier.",
+      "examples": ["Apache-2.0", "MIT", "GPL-3.0"]
+    },
+
+    "repoUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the node's source code repository.",
+      "examples": ["https://github.com/flowdsl/flowdsl-python"]
+    },
+
+    "docsUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the node's documentation page.",
+      "examples": ["https://flowdsl.com/nodes/email-fetcher"]
+    },
+
+    "icon": {
+      "type": "string",
+      "description": "Emoji or icon name displayed in Studio.",
+      "examples": ["📧", "mail", "robot"]
+    },
+
+    "color": {
+      "type": "string",
+      "description": "Hex color used for the node card in Studio.",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+      "examples": ["#4F46E5", "#10B981"]
+    },
+
+    "tags": {
+      "type": "array",
+      "description": "Search and filter tags for the registry.",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "examples": [["email", "imap", "source"]]
+    },
+
+    "runtime": {
+      "$ref": "#/definitions/NodeRuntime"
+    },
+
+    "inputs": {
+      "type": "array",
+      "description": "Named input ports. Each port accepts messages matching the given schema.",
+      "items": { "$ref": "#/definitions/NodePort" }
+    },
+
+    "outputs": {
+      "type": "array",
+      "description": "Named output ports. Each port emits messages matching the given schema.",
+      "items": { "$ref": "#/definitions/NodePort" }
+    },
+
+    "settingsSchema": {
+      "$ref": "#/definitions/SettingsSchema"
+    },
+
+    "dependencies": {
+      "type": "array",
+      "description": "Other node IDs that must be present in the runtime for this node to function.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+/[a-z0-9_-]+$"
+      },
+      "uniqueItems": true,
+      "examples": [["flowdsl/http-fetcher"]]
+    },
+
+    "minRuntimeVersion": {
+      "type": "string",
+      "description": "Minimum FlowDSL runtime version required to execute this node.",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*).*$",
+      "examples": ["1.0.0"]
+    },
+
+    "published": {
+      "type": "boolean",
+      "description": "Whether this node is publicly visible in the registry."
+    },
+
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this version was published.",
+      "examples": ["2026-01-15T10:30:00Z"]
+    }
+  },
+
+  "patternProperties": {
+    "^x-": { "$ref": "#/definitions/Extension" }
+  },
+
+  "definitions": {
+
+    "Author": {
+      "type": "object",
+      "description": "Node author or publisher.",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the author or organization.",
+          "examples": ["FlowDSL Team", "Acme Corp"]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Author's website or GitHub profile URL."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email address."
+        }
+      }
+    },
+
+    "NodeRuntime": {
+      "type": "object",
+      "description": "Runtime invocation configuration for the node handler.",
+      "required": ["handler", "invocation"],
+      "additionalProperties": false,
+      "properties": {
+        "handler": {
+          "type": "string",
+          "description": "Fully-qualified handler path or class name. Format depends on language: Go uses package path, Python uses module.ClassName, Node.js uses file/export path.",
+          "examples": [
+            "github.com/flowdsl/flowdsl-go/nodes.EmailFetcherNode",
+            "flowdsl.nodes.email.EmailFetcherNode",
+            "nodes/email-fetcher.EmailFetcherNode"
+          ]
+        },
+        "invocation": {
+          "type": "string",
+          "description": "How the FlowDSL runtime invokes this node handler.",
+          "enum": ["inProcess", "http", "kafka", "grpc"]
+        },
+        "image": {
+          "type": "string",
+          "description": "Optional container image for isolated node execution.",
+          "examples": ["ghcr.io/flowdsl/email-fetcher:1.0.0"]
+        }
+      }
+    },
+
+    "NodePort": {
+      "type": "object",
+      "description": "A named input or output port on a node.",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Port name. PascalCase for event-style ports, camelCase for data ports.",
+          "examples": ["EmailReceived", "AnyPayload", "Passed", "Failed"]
+        },
+        "description": {
+          "type": "string",
+          "description": "What this port carries or expects."
+        },
+        "schema": {
+          "type": "object",
+          "description": "JSON Schema (Draft-07) describing the message shape on this port. Omit for dynamic or untyped ports.",
+          "additionalProperties": true
+        }
+      }
+    },
+
+    "SettingsSchema": {
+      "type": "object",
+      "description": "JSON Schema object describing the node's configuration properties. FlowDSL Studio renders a settings form from this schema. Supports standard JSON Schema Draft-07 keywords plus x-ui extensions for Studio form hints.",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["object"],
+          "default": "object"
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of required property names."
+        },
+        "properties": {
+          "type": "object",
+          "description": "Map of setting name to its property definition.",
+          "additionalProperties": {
+            "$ref": "#/definitions/SettingsProperty"
+          }
+        }
+      }
+    },
+
+    "SettingsProperty": {
+      "type": "object",
+      "description": "A single setting property in the settings schema. Supports standard JSON Schema fields plus x-ui for Studio form rendering hints.",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "description": "JSON Schema type of this setting.",
+          "oneOf": [
+            { "type": "string", "enum": ["string", "number", "integer", "boolean", "array", "object"] },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "Label shown next to the form field in Studio."
+        },
+        "description": {
+          "type": "string",
+          "description": "Helper text shown below the form field."
+        },
+        "default": {
+          "description": "Default value pre-filled in the form."
+        },
+        "enum": {
+          "type": "array",
+          "description": "Allowed values. Studio renders this as a dropdown select.",
+          "items": {}
+        },
+        "minimum": {
+          "type": "number",
+          "description": "Minimum value for number fields."
+        },
+        "maximum": {
+          "type": "number",
+          "description": "Maximum value for number fields."
+        },
+        "format": {
+          "type": "string",
+          "description": "JSON Schema format hint. Use 'password' to render a masked input in Studio.",
+          "examples": ["password", "uri", "email", "date-time"]
+        },
+        "items": {
+          "type": "object",
+          "description": "Schema for array items.",
+          "additionalProperties": true
+        },
+        "properties": {
+          "type": "object",
+          "description": "Schema for object properties.",
+          "additionalProperties": true
+        },
+        "x-ui": {
+          "$ref": "#/definitions/SettingsPropertyUi"
+        }
+      }
+    },
+
+    "SettingsPropertyUi": {
+      "type": "object",
+      "description": "Studio form rendering hints for a settings property.",
+      "additionalProperties": false,
+      "properties": {
+        "placeholder": {
+          "type": "string",
+          "description": "Placeholder text shown inside the input before the user types."
+        },
+        "group": {
+          "type": "string",
+          "description": "Group name for collapsing related settings into a section in the Studio form."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order within the form (lower numbers appear first).",
+          "minimum": 0
+        },
+        "secret": {
+          "type": "boolean",
+          "description": "Whether this field holds a secret value. Secrets are stored in the credential store and never included in exported flow documents.",
+          "default": false
+        }
+      }
+    },
+
+    "Extension": {
+      "description": "Vendor extension field. Any value is permitted under x-* keys.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "object" },
+        { "type": "array" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

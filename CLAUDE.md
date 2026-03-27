@@ -5,7 +5,9 @@ The canonical open specification for FlowDSL v1.0.0.
 This is the source of truth for the FlowDSL language — the JSON Schema,
 examples, and specification documentation.
 
-Equivalent role to `asyncapi/spec` in the AsyncAPI ecosystem.
+FlowDSL is its own specification, not a derivative of any other.
+It describes executable flow graphs — a concept that OpenAPI and AsyncAPI
+do not address. They can be integrated, but are not required.
 
 ## Repo structure
 ```
@@ -19,11 +21,40 @@ docs/             specification reference and concept guides
 - JSON Schema lives in schemas/flowdsl.schema.json — Draft-07 format
 - All JSON fields use camelCase (e.g. operationId, batchSize, maxInFlight)
 - Use $ref for all cross-references — never inline duplicate definitions
-- asyncapi# prefix means a reference into an external AsyncAPI document
 - YAML is human-readable presentation format — JSON is canonical
 - File extensions: .flowdsl.json and .flowdsl.yaml
 - Schema $id: https://flowdsl.com/schemas/v1/flowdsl.schema.json
 - Never break backward compatibility within a major version
+
+## Events and packets (FlowDSL-native schema system)
+
+FlowDSL defines its own first-class message types. External schema imports are optional.
+
+### components.events
+Named, versioned event definitions. The primary way to define typed messages.
+Each event has a name, summary, and a payload (JSON Schema inline or ref to a packet).
+
+```yaml
+components:
+  events:
+    UserCreated:
+      summary: Fired when a new user registers
+      payload:
+        schema:
+          type: object
+          properties:
+            userId: { type: string }
+            email:  { type: string }
+```
+
+### components.packets
+Raw reusable JSON Schema shapes. Referenced by events or directly on node ports.
+
+### MessageRef resolution order
+1. `#/components/events/MyEvent`   — FlowDSL-native event (preferred)
+2. `#/components/packets/MyPacket` — raw schema shape
+3. `asyncapi#/components/messages/...` — external AsyncAPI import (optional, requires externalDocs.asyncapi)
+4. `openapi#/components/schemas/...`  — external OpenAPI import (optional, requires externalDocs.openapi)
 
 ## Delivery modes (core concept)
 - direct — in-process, no persistence, lowest latency
@@ -49,13 +80,14 @@ docs/             specification reference and concept guides
 - flowdsl/flowdsl-python — Python SDK + redelay integration
 - coded.ai — commercial node marketplace
 - clouded.ai — managed workflow hosting
-- redelay — Python/FastAPI framework, first FlowDSL integration partner
+- redelay — Python/FastAPI framework, FlowDSL integration partner
 
 ## GitHub org
 https://github.com/flowdsl
 
 ## Do not
 - Do not add runtime implementation code to this repo
-- Do not duplicate AsyncAPI message schemas — reference them
+- Do not duplicate AsyncAPI or OpenAPI schema structures — reference them via externalDocs
 - Do not change field naming convention from camelCase
 - Do not remove or rename existing schema fields in v1 (breaking change)
+- Do not make FlowDSL depend on AsyncAPI or OpenAPI — they are optional integrations

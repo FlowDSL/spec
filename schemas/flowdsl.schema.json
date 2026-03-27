@@ -132,7 +132,7 @@
 
     "ExternalDocs": {
       "type": "object",
-      "description": "Links to external specification documents this flow references.",
+      "description": "Optional links to external specification documents. Declare these only when you want to reference schemas from AsyncAPI or OpenAPI documents using asyncapi#/... or openapi#/... $ref prefixes. FlowDSL documents are fully functional without this field.",
       "additionalProperties": false,
       "properties": {
         "asyncapi": {
@@ -356,21 +356,84 @@
 
     "MessageRef": {
       "type": "object",
-      "description": "A reference to a message schema. May reference AsyncAPI, local components, or inline schema.",
+      "description": "A reference to a message schema. Resolution order: (1) #/components/events/... — FlowDSL-native event (preferred); (2) #/components/packets/... — raw schema shape; (3) asyncapi#/... or openapi#/... — external import, requires externalDocs. Inline schema is also supported.",
       "additionalProperties": false,
       "properties": {
         "$ref": {
           "type": "string",
-          "description": "JSON Reference to a message definition. Supports asyncapi# and local # prefixes.",
+          "description": "JSON Reference to a message schema. Prefer local FlowDSL refs. External prefixes asyncapi#/... and openapi#/... are optional integrations requiring externalDocs declaration.",
           "examples": [
+            "#/components/events/UserCreated",
+            "#/components/packets/RulePassedDomainPacket",
             "asyncapi#/components/messages/DomainExpiredPayload",
-            "#/components/packets/RulePassedDomainPacket"
+            "openapi#/components/schemas/Order"
           ]
         },
         "schema": {
           "type": "object",
-          "description": "Inline JSON Schema for the message payload (use $ref instead when possible)."
+          "description": "Inline JSON Schema for the message payload. Use $ref to a named event or packet instead when the schema is reused across multiple ports."
         }
+      }
+    },
+
+    "EventDefinition": {
+      "type": "object",
+      "description": "A named, versioned FlowDSL event. Events are the primary way to define typed messages that flow between nodes. Use components.events for all first-class message contracts.",
+      "required": ["payload"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable event name. Should match the component key in PascalCase.",
+          "examples": ["UserCreated", "OrderFulfilled", "DomainDropDetected"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Display title shown in Studio and documentation.",
+          "examples": ["Domain Drop Detected"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "One-line description of when this event is emitted.",
+          "examples": ["Emitted when DNS monitoring confirms a domain has dropped (NXDOMAIN)."]
+        },
+        "description": {
+          "type": "string",
+          "description": "Full description of the event's semantics and usage."
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version of this event schema. Increment minor on additive changes, major on breaking.",
+          "examples": ["1.0.0", "2.1.0"]
+        },
+        "entityType": {
+          "type": "string",
+          "description": "Domain entity type this event belongs to. Used by SDK code generators (e.g. redelay Python SDK) to set entity_type on the generated EventDefinition class. Use snake_case.",
+          "examples": ["domain", "favorite", "auction", "user"]
+        },
+        "action": {
+          "type": "string",
+          "description": "Event action verb. Used by SDK code generators to set action on the generated EventDefinition class. Use snake_case.",
+          "examples": ["drop_detected", "expired", "whois_completed", "features_extracted"]
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags for grouping events in the Studio schema browser.",
+          "examples": [["domain", "dropcatch"], ["auction", "inventory"]]
+        },
+        "payload": {
+          "$ref": "#/definitions/MessageRef",
+          "description": "The payload schema for this event. Use an inline schema or reference a packet."
+        },
+        "examples": {
+          "type": "array",
+          "description": "Example payload instances for documentation and testing.",
+          "items": { "type": "object" }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
       }
     },
 
@@ -664,6 +727,19 @@
       "description": "Reusable component definitions referenced via $ref throughout the document.",
       "additionalProperties": false,
       "properties": {
+        "events": {
+          "type": "object",
+          "description": "Named FlowDSL event definitions. The primary way to define typed messages. Reference with #/components/events/MyEvent on node ports and entrypoints. Prefer events over raw packets for all named message contracts.",
+          "additionalProperties": { "$ref": "#/definitions/EventDefinition" }
+        },
+        "packets": {
+          "type": "object",
+          "description": "Raw reusable JSON Schema shapes. Use for low-level payload types shared across events. Reference with #/components/packets/MyPacket.",
+          "additionalProperties": {
+            "type": "object",
+            "description": "A JSON Schema definition for a packet type."
+          }
+        },
         "nodes": {
           "type": "object",
           "description": "Reusable node definitions.",
@@ -679,17 +755,9 @@
           "description": "Reusable retry policy definitions.",
           "additionalProperties": { "$ref": "#/definitions/RetryPolicy" }
         },
-        "packets": {
-          "type": "object",
-          "description": "Internal packet schemas — typed message payloads that do not appear in AsyncAPI.",
-          "additionalProperties": {
-            "type": "object",
-            "description": "A JSON Schema definition for an internal packet type."
-          }
-        },
         "schemas": {
           "type": "object",
-          "description": "Shared JSON Schema definitions for reuse across packets and node ports.",
+          "description": "Shared JSON Schema definitions for reuse across packets and events.",
           "additionalProperties": {
             "type": "object"
           }

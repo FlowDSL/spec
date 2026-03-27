@@ -1,0 +1,25 @@
+{
+  "name": "spec",
+  "version": "1.0.0",
+  "description": "**The open specification for describing executable event-driven flow graphs.**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com-iharf:flowdsl/spec.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "ajv-cli": "^5.0.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

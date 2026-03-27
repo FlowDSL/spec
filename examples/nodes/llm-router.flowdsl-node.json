@@ -1,0 +1,82 @@
+{
+  "id": "flowdsl/llm-router",
+  "name": "LLM Router",
+  "version": "1.0.0",
+  "summary": "Uses an LLM to classify the incoming payload and route it to one of the configured output ports.",
+  "description": "# LLM Router\n\nClassifies the incoming payload using an LLM and routes it to a named output port based on the model's decision. Routes are defined in settings as a list of `{ name, description }` pairs. The node dynamically exposes one output port per route.\n\n## Use cases\n- Route support tickets to the correct team (billing, technical, general)\n- Classify emails by intent (inquiry, complaint, order)\n- Direct documents to different processing pipelines by type\n\n## Notes\n- Output ports are dynamic: the port names match the `name` field of each route in settings\n- The LLM is given the route descriptions and instructed to pick the best match\n- If no route matches confidently, the payload is emitted on the last-defined route as a fallback\n- Combine with `flowdsl/llm-analyzer` for richer multi-step classification",
+  "kind": "router",
+  "language": "python",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-python",
+  "docsUrl": "https://flowdsl.com/nodes/llm-router",
+  "icon": "🔀",
+  "color": "#8B5CF6",
+  "tags": ["llm", "ai", "router", "classification", "dynamic"],
+  "runtime": {
+    "handler": "flowdsl.nodes.llm.LlmRouterNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "Accepts any JSON payload to be classified and routed."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "dynamic",
+      "description": "Output ports are generated at flow-definition time, one per route defined in the 'routes' setting. Port names match the 'name' field of each route entry."
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["prompt", "routes"],
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "title": "Classification Prompt",
+        "description": "Describe what the LLM should classify. The route descriptions are appended automatically.",
+        "x-ui": { "placeholder": "Classify this customer message by its primary intent.", "order": 1, "group": "Model" }
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
+        "description": "LLM model used for classification.",
+        "enum": ["gpt-4o", "claude-sonnet-4-5", "gemini-1.5-pro"],
+        "default": "claude-sonnet-4-5",
+        "x-ui": { "order": 2, "group": "Model" }
+      },
+      "routes": {
+        "type": "array",
+        "title": "Routes",
+        "description": "List of named routes. Each route becomes an output port. The LLM uses the description to decide which route fits.",
+        "items": {
+          "type": "object",
+          "required": ["name", "description"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Route name. Also the output port name. PascalCase recommended.",
+              "examples": ["Billing", "Technical", "General"]
+            },
+            "description": {
+              "type": "string",
+              "description": "What kind of payload belongs on this route. Used as context for the LLM.",
+              "examples": ["Questions about invoices, payments, or subscriptions"]
+            }
+          }
+        },
+        "minItems": 2,
+        "x-ui": { "order": 3, "group": "Routes" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

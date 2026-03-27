@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flowdsl.com/schemas/v1/flowdsl-registry.schema.json",
+  "title": "FlowDSL Registry Index",
+  "description": "Schema for the registry index file served at repo.flowdsl.com/registry.json. Contains a lightweight summary of all published nodes, suitable for search, browsing, and Studio palette population. Full node manifests are fetched individually.",
+  "type": "object",
+  "required": ["version", "updatedAt", "nodes"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "version": {
+      "type": "string",
+      "description": "Version of the registry index format.",
+      "enum": ["1.0.0"],
+      "examples": ["1.0.0"]
+    },
+
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last index update.",
+      "examples": ["2026-03-27T00:00:00Z"]
+    },
+
+    "nodes": {
+      "type": "array",
+      "description": "Lightweight summary entries for all published nodes. Full manifests are available at repo.flowdsl.com/nodes/{id}/{version}/manifest.json.",
+      "items": {
+        "$ref": "#/definitions/RegistryEntry"
+      },
+      "minItems": 0
+    }
+  },
+
+  "definitions": {
+
+    "RegistryEntry": {
+      "type": "object",
+      "description": "Lightweight summary of a published node, used for search and Studio palette population.",
+      "required": ["id", "name", "version", "summary", "kind", "language", "author", "publishedAt"],
+      "additionalProperties": false,
+      "properties": {
+
+        "id": {
+          "type": "string",
+          "description": "Unique node identifier. Format: <namespace>/<slug>.",
+          "pattern": "^[a-z0-9_-]+/[a-z0-9_-]+$",
+          "examples": ["flowdsl/email-fetcher"]
+        },
+
+        "name": {
+          "type": "string",
+          "description": "Human-readable display name.",
+          "examples": ["Email Fetcher"]
+        },
+
+        "version": {
+          "type": "string",
+          "description": "Latest published semver version.",
+          "examples": ["1.0.0"]
+        },
+
+        "summary": {
+          "type": "string",
+          "description": "One-line description shown in search results and Studio palette."
+        },
+
+        "kind": {
+          "type": "string",
+          "description": "Functional category of the node.",
+          "enum": ["source", "transform", "router", "llm", "action", "checkpoint", "publish", "terminal", "integration"]
+        },
+
+        "language": {
+          "type": "string",
+          "description": "Implementation language.",
+          "enum": ["go", "python", "nodejs"]
+        },
+
+        "icon": {
+          "type": "string",
+          "description": "Emoji or icon name.",
+          "examples": ["📧", "🔁", "🤖"]
+        },
+
+        "color": {
+          "type": "string",
+          "description": "Hex color for Studio node card.",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+          "examples": ["#4F46E5"]
+        },
+
+        "tags": {
+          "type": "array",
+          "description": "Search and filter tags.",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+
+        "author": {
+          "type": "object",
+          "description": "Condensed author identity for registry display.",
+          "required": ["name"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Author or organization display name.",
+              "examples": ["FlowDSL Team"]
+            }
+          }
+        },
+
+        "repoUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the node's source repository."
+        },
+
+        "docsUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the node's documentation page."
+        },
+
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when the latest version was published.",
+          "examples": ["2026-01-15T10:30:00Z"]
+        },
+
+        "downloadCount": {
+          "type": "integer",
+          "description": "Total number of times this node has been installed or downloaded.",
+          "minimum": 0,
+          "examples": [1240]
+        }
+      }
+    }
+  }
+}

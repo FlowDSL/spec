@@ -1,0 +1,91 @@
+{
+  "id": "flowdsl/webhook-receiver",
+  "name": "Webhook Receiver",
+  "version": "1.0.0",
+  "summary": "Listens on a configurable HTTP path and emits an event for each incoming webhook request.",
+  "description": "# Webhook Receiver\n\nRegisters an HTTP endpoint in the FlowDSL runtime and emits a `WebhookPayload` event for each incoming request. Supports HMAC signature verification for secure webhook receipt.\n\n## Use cases\n- Receive Stripe, GitHub, or Slack webhook events\n- Trigger flows from third-party system callbacks\n- Accept inbound API calls from external services\n\n## Notes\n- The `path` must be unique within a deployment\n- When `secret` is set, requests without a valid HMAC signature are rejected with HTTP 401\n- The `body` field is the raw request body as a string; use `flowdsl/json-transformer` to parse it",
+  "kind": "source",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/webhook-receiver",
+  "icon": "🪝",
+  "color": "#F59E0B",
+  "tags": ["webhook", "http", "source", "inbound", "trigger"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.WebhookReceiverNode",
+    "invocation": "http"
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "WebhookPayload",
+      "description": "Emitted for each incoming HTTP request to the registered path.",
+      "schema": {
+        "type": "object",
+        "required": ["headers", "body", "method", "path", "receivedAt"],
+        "properties": {
+          "headers": {
+            "type": "object",
+            "description": "Incoming request headers.",
+            "additionalProperties": { "type": "string" }
+          },
+          "body": {
+            "type": "string",
+            "description": "Raw request body."
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method of the incoming request.",
+            "examples": ["POST", "GET"]
+          },
+          "path": {
+            "type": "string",
+            "description": "The path on which the request was received.",
+            "examples": ["/webhooks/stripe"]
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the request was received."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["path"],
+    "properties": {
+      "path": {
+        "type": "string",
+        "title": "Path",
+        "description": "HTTP path to register for this webhook. Must start with '/'.",
+        "x-ui": { "placeholder": "/webhooks/stripe", "order": 1, "group": "Endpoint" }
+      },
+      "secret": {
+        "type": "string",
+        "title": "Signing Secret",
+        "description": "HMAC secret for request signature verification. Leave empty to accept all requests.",
+        "format": "password",
+        "x-ui": { "order": 2, "group": "Security", "secret": true }
+      },
+      "method": {
+        "type": "string",
+        "title": "Accepted Method",
+        "description": "HTTP method this endpoint accepts.",
+        "enum": ["POST", "GET", "PUT"],
+        "default": "POST",
+        "x-ui": { "order": 3, "group": "Endpoint" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://flowdsl.com/schemas/v1/node-registry.schema.json",
+  "title": "FlowDSL Node Registry",
+  "description": "Schema for node-registry.yaml — lists available FlowDSL node handlers per service, mapping operationId to runtime handler, language, invocation mode, and version.",
+  "type": "object",
+  "required": ["registry"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "registry": {
+      "type": "string",
+      "description": "The node registry schema version this document uses.",
+      "enum": ["1.0.0"],
+      "examples": ["1.0.0"]
+    },
+
+    "info": {
+      "type": "object",
+      "description": "Metadata about this node registry document.",
+      "required": ["title", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Human-readable name of this registry.",
+          "examples": ["Domain Processing Node Registry"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of this registry document (semver recommended).",
+          "examples": ["1.0.0"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional description of what services or domains this registry covers."
+        },
+        "contact": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "services": {
+      "type": "object",
+      "description": "Map of service names to their node handler registrations. Keys are service names.",
+      "additionalProperties": {
+        "$ref": "#/definitions/ServiceRegistry"
+      },
+      "minProperties": 1
+    }
+  },
+
+  "patternProperties": {
+    "^x-": { "$ref": "#/definitions/Extension" }
+  },
+
+  "definitions": {
+
+    "ServiceRegistry": {
+      "type": "object",
+      "description": "All node handlers registered by a single service.",
+      "required": ["nodes"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Optional description of this service."
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "Base URL for http-invoked nodes in this service.",
+          "format": "uri",
+          "examples": ["http://domain-service.internal:8080"]
+        },
+        "language": {
+          "type": "string",
+          "description": "Default implementation language for nodes in this service. Can be overridden per node.",
+          "enum": ["go", "python", "nodejs"]
+        },
+        "nodes": {
+          "type": "object",
+          "description": "Map of operationId to node handler registration. Keys are operationId values (snake_case).",
+          "additionalProperties": {
+            "$ref": "#/definitions/NodeRegistration"
+          },
+          "minProperties": 1
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for grouping services in the Studio registry browser.",
+          "items": { "type": "string" }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "NodeRegistration": {
+      "type": "object",
+      "description": "A single node handler registration — maps an operationId to its runtime implementation.",
+      "required": ["handler"],
+      "additionalProperties": false,
+      "properties": {
+        "handler": {
+          "type": "string",
+          "description": "Fully-qualified handler path or class name. Format depends on language.",
+          "examples": [
+            "app.nodes.domain.RuleFilterNode",
+            "nodes/domain/rule_filter.RuleFilterNode",
+            "github.com/myorg/domain-nodes/nodes.RuleFilterNode"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "description": "Implementation language. Overrides the service-level default if set.",
+          "enum": ["go", "python", "nodejs"]
+        },
+        "invocation": {
+          "type": "string",
+          "description": "How the runtime invokes this node handler.",
+          "enum": ["inProcess", "http", "kafka", "grpc"],
+          "default": "inProcess"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of this node handler implementation (semver recommended).",
+          "examples": ["1.2.0", "2.0.0-rc1"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what this node does."
+        },
+        "image": {
+          "type": "string",
+          "description": "Optional container image for isolated node execution.",
+          "examples": ["ghcr.io/myorg/domain-nodes:1.2.0"]
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Full URL for http or grpc invocation. Overrides service-level baseUrl.",
+          "examples": [
+            "http://domain-service.internal:8080/nodes/rule-filter",
+            "grpc://domain-service.internal:9090"
+          ]
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Whether this handler is deprecated. Deprecated handlers will be flagged in Studio.",
+          "default": false
+        },
+        "deprecationMessage": {
+          "type": "string",
+          "description": "Optional message explaining why this handler is deprecated and what to use instead."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for filtering in the Studio registry browser.",
+          "items": { "type": "string" }
+        }
+      },
+      "patternProperties": {
+        "^x-": { "$ref": "#/definitions/Extension" }
+      }
+    },
+
+    "Extension": {
+      "description": "Vendor extension field. Any value is permitted under x-* keys.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "object" },
+        { "type": "array" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

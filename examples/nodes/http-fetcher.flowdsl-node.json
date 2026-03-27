@@ -1,0 +1,110 @@
+{
+  "id": "flowdsl/http-fetcher",
+  "name": "HTTP Fetcher",
+  "version": "1.0.0",
+  "summary": "Polls an HTTP endpoint on a configurable interval and emits the response as an event.",
+  "description": "# HTTP Fetcher\n\nSends an HTTP request to the configured URL on a regular interval and emits an `HttpResponse` event containing the status code, headers, and body. Supports GET, POST, PUT, and PATCH methods with optional authentication.\n\n## Use cases\n- Poll a REST API for new data\n- Scrape JSON feeds from third-party services\n- Monitor an endpoint for status changes\n\n## Notes\n- The `body` field contains the raw response body as a string\n- For JSON APIs, chain with `flowdsl/json-transformer` to extract fields\n- Bearer token and Basic credentials are stored securely and never exported",
+  "kind": "source",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/http-fetcher",
+  "icon": "🌐",
+  "color": "#0EA5E9",
+  "tags": ["http", "rest", "polling", "source", "api"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.HttpFetcherNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "HttpResponse",
+      "description": "Emitted after each successful HTTP request.",
+      "schema": {
+        "type": "object",
+        "required": ["statusCode", "body", "url"],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "description": "HTTP response status code.",
+            "examples": [200, 201, 404]
+          },
+          "body": {
+            "type": "string",
+            "description": "Raw response body."
+          },
+          "headers": {
+            "type": "object",
+            "description": "Response headers as key-value pairs.",
+            "additionalProperties": { "type": "string" }
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The URL that was requested."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["url"],
+    "properties": {
+      "url": {
+        "type": "string",
+        "title": "URL",
+        "description": "The HTTP endpoint to request.",
+        "format": "uri",
+        "x-ui": { "placeholder": "https://api.example.com/data", "order": 1, "group": "Request" }
+      },
+      "method": {
+        "type": "string",
+        "title": "HTTP Method",
+        "description": "HTTP method to use.",
+        "enum": ["GET", "POST", "PUT", "PATCH"],
+        "default": "GET",
+        "x-ui": { "order": 2, "group": "Request" }
+      },
+      "headers": {
+        "type": "object",
+        "title": "Headers",
+        "description": "Additional HTTP headers to include in the request.",
+        "additionalProperties": { "type": "string" },
+        "x-ui": { "order": 3, "group": "Request" }
+      },
+      "authType": {
+        "type": "string",
+        "title": "Authentication Type",
+        "description": "Authentication scheme to use.",
+        "enum": ["none", "bearer", "basic"],
+        "default": "none",
+        "x-ui": { "order": 4, "group": "Authentication" }
+      },
+      "bearerToken": {
+        "type": "string",
+        "title": "Bearer Token",
+        "description": "Token for Bearer authentication. Only used when authType is 'bearer'.",
+        "format": "password",
+        "x-ui": { "order": 5, "group": "Authentication", "secret": true }
+      },
+      "pollIntervalSec": {
+        "type": "number",
+        "title": "Poll Interval (seconds)",
+        "description": "How often to send the request.",
+        "default": 60,
+        "minimum": 5,
+        "x-ui": { "order": 6, "group": "Polling" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

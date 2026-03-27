@@ -1,0 +1,67 @@
+{
+  "id": "flowdsl/slack-notifier",
+  "name": "Slack Notifier",
+  "version": "1.0.0",
+  "summary": "Sends a formatted message to a Slack channel via an incoming webhook URL.",
+  "description": "# Slack Notifier\n\nPosts a message to a Slack channel using a Slack Incoming Webhook. The message body is rendered from a Handlebars template that can reference any field in the incoming payload.\n\n## Use cases\n- Alert on-call teams when a flow detects an anomaly\n- Notify a channel when a business event completes\n- Post structured summaries from LLM analysis results\n\n## Notes\n- Create a Slack Incoming Webhook at api.slack.com/apps and paste the URL here\n- The `messageTemplate` supports Handlebars syntax: `{{field}}` and `{{#if condition}}...{{/if}}`\n- Slack's `mrkdwn` formatting is supported in the template (bold with `*text*`, code with `` `code` ``)\n- `webhookUrl` is stored securely and never included in exported flow documents",
+  "kind": "action",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/slack-notifier",
+  "icon": "💬",
+  "color": "#4A154B",
+  "tags": ["slack", "notification", "action", "messaging", "alert"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.SlackNotifierNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "Any payload. Fields are accessible in the messageTemplate via Handlebars syntax."
+    }
+  ],
+  "outputs": [],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["webhookUrl", "messageTemplate"],
+    "properties": {
+      "webhookUrl": {
+        "type": "string",
+        "title": "Webhook URL",
+        "description": "Slack Incoming Webhook URL. Stored securely.",
+        "format": "password",
+        "x-ui": { "placeholder": "https://hooks.slack.com/services/...", "order": 1, "group": "Connection", "secret": true }
+      },
+      "channel": {
+        "type": "string",
+        "title": "Channel",
+        "description": "Slack channel to post to. Overrides the channel set on the webhook if provided.",
+        "default": "#general",
+        "x-ui": { "placeholder": "#alerts", "order": 2, "group": "Message" }
+      },
+      "messageTemplate": {
+        "type": "string",
+        "title": "Message Template",
+        "description": "Handlebars template for the message body. Reference payload fields with {{fieldName}}.",
+        "x-ui": { "placeholder": ":rotating_light: *Alert*: {{title}} — score: {{score}}", "order": 3, "group": "Message" }
+      },
+      "iconEmoji": {
+        "type": "string",
+        "title": "Icon Emoji",
+        "description": "Emoji used as the bot icon in Slack.",
+        "default": ":robot_face:",
+        "x-ui": { "order": 4, "group": "Message" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

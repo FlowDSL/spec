@@ -1,0 +1,452 @@
+# Domain Drop-Catch Enrichment Pipeline
+#
+# Real-world FlowDSL example based on the nameniac.com drop-catch system.
+#
+# Pipeline stages:
+#   1. DomainDropDetected arrives (NXDOMAIN confirmed by DNS monitor)
+#   2. Fan-out: zone history + crawl enrichment requests dispatched in parallel
+#   3. go-whois fetches historical zone-file analysis   (DomainZoneHistoryCompleted)
+#   4. go-analysis fetches Common Crawl CDX data        (DomainCrawlEnrichmentCompleted)
+#   5. go-analysis merges all signals                   (DomainFeaturesExtracted)
+#   6. go-dropcatch publishes the fully-enriched domain (DomainExpired)
+#
+# Python SDK integration:
+#   Each event in components.events maps directly to a Python EventDefinition subclass.
+#   entityType → entity_type class attribute
+#   action     → action class attribute
+#   The Python redelay SDK generates AsyncAPI from these classes automatically.
+#   The AsyncAPI document is then referenceable via externalDocs.asyncapi.
+#
+# Delivery model:
+#   All inter-service communication uses eventBus (Kafka) — these are separate Go
+#   microservices (go-dropcatch, go-whois, go-analysis) communicating via Kafka topics.
+
+flowdsl: "1.0.0"
+
+info:
+  title: Domain Drop-Catch Enrichment Pipeline
+  version: "1.0.0"
+  description: >
+    Multi-stage enrichment pipeline triggered when a domain drop is confirmed
+    by DNS monitoring. Runs zone history (go-whois) and Common Crawl analysis
+    (go-analysis) in parallel, then merges all signals into a feature vector
+    and publishes the final DomainExpired event for downstream consumers.
+
+servers:
+  default:
+    url: flow-runtime.internal
+    protocol: hybrid
+
+# When redelay generates AsyncAPI from the Python events, reference it here
+# to allow Studio to browse live message schemas from the running service.
+externalDocs:
+  asyncapi: "http://localhost:8889/asyncapi.json"
+  openapi:  "http://localhost:8889/api/v1/openapi.json"
+  description: >
+    redelay-generated AsyncAPI document. Use asyncapi#/... refs on node ports
+    to reference message schemas owned by the Python event system.
+
+flows:
+
+  domain_drop_enrichment:
+    summary: Domain drop-catch enrichment pipeline
+    description: >
+      Triggered when go-dropcatch detects a domain NXDOMAIN via SOA query.
+      Fans out parallel enrichment requests, then merges results and publishes
+      the fully enriched DomainExpiredEvent for the analysis pipeline.
+    tags: [domain, dropcatch, enrichment, high-throughput]
+
+    entrypoints:
+      - message:
+          $ref: "#/components/events/DomainDropDetected"
+        description: Triggered when DNS monitoring confirms a domain has dropped
+
+    nodes:
+
+      drop_enrichment_dispatcher:
+        operationId: dispatch_drop_enrichment
+        title: Drop Enrichment Dispatcher
+        summary: >
+          Receives a confirmed drop event and fans out parallel enrichment
+          requests to go-whois (zone history) and go-analysis (crawl data).
+        kind: transform
+        runtime:
+          language: go
+          handler: nodes.dropcatch.DropEnrichmentDispatcherNode
+          invocation: inProcess
+        inputs:
+          - name: DomainDropDetected
+            message:
+              $ref: "#/components/events/DomainDropDetected"
+        outputs:
+          - name: ZoneHistoryRequested
+            message:
+              $ref: "#/components/events/DomainZoneHistoryRequested"
+          - name: CrawlEnrichmentRequested
+            message:
+              $ref: "#/components/events/DomainCrawlEnrichmentRequested"
+        execution:
+          timeoutMs: 1000
+          concurrency: 500
+        x-ui:
+          position: { x: 300, y: 100 }
+          color: "#10B981"
+          icon: arrow-path
+
+      zone_history_fetcher:
+        operationId: fetch_zone_history
+        title: Zone History Fetcher
+        summary: >
+          Queries historical zone-file archives for the dropped domain.
+          Produces first_seen_date, zone_age_days, registrar_count.
+          Implemented in go-whois.
+        kind: integration
+        runtime:
+          language: go
+          handler: nodes.whois.ZoneHistoryFetcherNode
+          invocation: inProcess
+        inputs:
+          - name: ZoneHistoryRequested
+            message:
+              $ref: "#/components/events/DomainZoneHistoryRequested"
+        outputs:
+          - name: ZoneHistoryCompleted
+            message:
+              $ref: "#/components/events/DomainZoneHistoryCompleted"
+        execution:
+          timeoutMs: 10000
+          concurrency: 200
+        x-ui:
+          position: { x: 100, y: 300 }
+          color: "#14B8A6"
+          icon: archive-box
+
+      crawl_enrichment_fetcher:
+        operationId: fetch_crawl_enrichment
+        title: Crawl Enrichment Fetcher
+        summary: >
+          Queries the Common Crawl CDX API for the dropped domain.
+          Produces page_count, backlink_estimate, content_category, title_keywords.
+          Implemented in go-analysis.
+        kind: integration
+        runtime:
+          language: go
+          handler: nodes.analysis.CrawlEnrichmentFetcherNode
+          invocation: inProcess
+        inputs:
+          - name: CrawlEnrichmentRequested
+            message:
+              $ref: "#/components/events/DomainCrawlEnrichmentRequested"
+        outputs:
+          - name: CrawlEnrichmentCompleted
+            message:
+              $ref: "#/components/events/DomainCrawlEnrichmentCompleted"
+        execution:
+          timeoutMs: 15000
+          concurrency: 100
+        x-ui:
+          position: { x: 500, y: 300 }
+          color: "#14B8A6"
+          icon: globe-alt
+
+      feature_extractor:
+        operationId: extract_domain_features
+        title: Feature Extractor
+        summary: >
+          Merges zone history, crawl, TLD coverage, and AI scores into a
+          single feature vector. Persists to ClickHouse drop_pipeline_state.
+          Triggers DomainExpiredEvent once all enrichment stages are complete.
+        kind: transform
+        runtime:
+          language: go
+          handler: nodes.analysis.FeatureExtractorNode
+          invocation: inProcess
+        inputs:
+          - name: ZoneHistoryCompleted
+            message:
+              $ref: "#/components/events/DomainZoneHistoryCompleted"
+          - name: CrawlEnrichmentCompleted
+            message:
+              $ref: "#/components/events/DomainCrawlEnrichmentCompleted"
+        outputs:
+          - name: FeaturesExtracted
+            message:
+              $ref: "#/components/events/DomainFeaturesExtracted"
+        execution:
+          timeoutMs: 5000
+          concurrency: 200
+        x-ui:
+          position: { x: 300, y: 500 }
+          color: "#8B5CF6"
+          icon: cpu-chip
+
+      domain_expired_publisher:
+        operationId: publish_domain_expired
+        title: Domain Expired Publisher
+        summary: >
+          Assembles and publishes the fully-enriched DomainExpiredEvent.
+          This is the final event consumed by the analysis pipeline.
+          source=dropcatch, is_enriched=true.
+        kind: publish
+        runtime:
+          language: go
+          handler: nodes.dropcatch.DomainExpiredPublisherNode
+          invocation: inProcess
+        inputs:
+          - name: FeaturesExtracted
+            message:
+              $ref: "#/components/events/DomainFeaturesExtracted"
+        outputs:
+          - name: DomainExpired
+            message:
+              $ref: "#/components/events/DomainExpired"
+        execution:
+          timeoutMs: 2000
+          concurrency: 200
+        x-ui:
+          position: { x: 300, y: 700 }
+          color: "#06B6D4"
+          icon: arrow-up-circle
+
+    edges:
+
+      # Fan-out leg 1: dispatch → zone history fetcher (go-whois)
+      - from: drop_enrichment_dispatcher
+        to:   zone_history_fetcher
+        when: "output.name == 'ZoneHistoryRequested'"
+        description: Zone history request to go-whois via Kafka
+        delivery:
+          mode: eventBus
+          eventBus:
+            bus: kafka
+            topic: nameniac.domain.zone_history
+            partitionKey: payload.domain
+
+      # Fan-out leg 2: dispatch → crawl enrichment fetcher (go-analysis)
+      - from: drop_enrichment_dispatcher
+        to:   crawl_enrichment_fetcher
+        when: "output.name == 'CrawlEnrichmentRequested'"
+        description: Crawl enrichment request to go-analysis via Kafka
+        delivery:
+          mode: eventBus
+          eventBus:
+            bus: kafka
+            topic: nameniac.domain.crawl_enrichment
+            partitionKey: payload.domain
+
+      # Zone history result → feature extractor (join leg 1)
+      - from: zone_history_fetcher
+        to:   feature_extractor
+        description: Zone history results into feature merger
+        delivery:
+          mode: eventBus
+          eventBus:
+            bus: kafka
+            topic: nameniac.domain.zone_history
+            partitionKey: payload.domain
+
+      # Crawl enrichment result → feature extractor (join leg 2)
+      - from: crawl_enrichment_fetcher
+        to:   feature_extractor
+        description: Crawl enrichment results into feature merger
+        delivery:
+          mode: eventBus
+          eventBus:
+            bus: kafka
+            topic: nameniac.domain.crawl_enrichment
+            partitionKey: payload.domain
+
+      # Features extracted → publish final DomainExpired event
+      - from: feature_extractor
+        to:   domain_expired_publisher
+        description: Merged feature vector triggers final event publication
+        delivery:
+          mode: eventBus
+          eventBus:
+            bus: kafka
+            topic: nameniac.domain.drop_pipeline
+            partitionKey: payload.domain
+
+    defaults:
+      execution:
+        timeoutMs: 30000
+        maxRetries: 3
+
+
+components:
+
+  events:
+
+    # ── Drop detection ──────────────────────────────────────────────────────
+
+    DomainDropDetected:
+      entityType: domain
+      action: drop_detected
+      version: "1.0.0"
+      summary: >
+        Emitted when DNS monitoring confirms a domain has dropped (NXDOMAIN
+        via SOA query to authoritative gTLD servers).
+      tags: [domain, dropcatch, detection]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld, detected_at, check_count, nameserver_used]
+          properties:
+            domain:               { type: string, examples: [example.com] }
+            tld:                  { type: string, examples: [com] }
+            detected_at:          { type: string, format: date-time }
+            removed_from_zone_at: { type: string, format: date }
+            predicted_drop_at:    { type: string, format: date-time }
+            delta_seconds:        { type: integer, description: "Seconds late/early vs prediction. Positive = late." }
+            check_count:          { type: integer, description: Total DNS checks before NXDOMAIN }
+            nameserver_used:      { type: string, examples: [a.gtld-servers.net] }
+      examples:
+        - domain: mendeal.com
+          tld: com
+          detected_at: "2025-03-15T14:23:01Z"
+          removed_from_zone_at: "2025-02-08"
+          predicted_drop_at: "2025-03-15T14:00:00Z"
+          delta_seconds: 1381
+          check_count: 847
+          nameserver_used: a.gtld-servers.net
+
+    # ── Zone history enrichment ─────────────────────────────────────────────
+
+    DomainZoneHistoryRequested:
+      entityType: domain
+      action: zone_history_requested
+      version: "1.0.0"
+      summary: Requests historical zone-file analysis for a dropped domain from go-whois.
+      tags: [domain, dropcatch, zone]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld, detected_at]
+          properties:
+            domain:      { type: string }
+            tld:         { type: string }
+            detected_at: { type: string, format: date-time }
+
+    DomainZoneHistoryCompleted:
+      entityType: domain
+      action: zone_history_completed
+      version: "1.0.0"
+      summary: Historical zone-file analysis result from go-whois.
+      tags: [domain, dropcatch, zone]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld]
+          properties:
+            domain:           { type: string }
+            tld:              { type: string }
+            first_seen_date:  { type: string, format: date }
+            last_seen_date:   { type: string, format: date }
+            zone_age_days:    { type: integer }
+            zone_appearances: { type: integer }
+            registrar_count:  { type: integer }
+
+    # ── Crawl enrichment ───────────────────────────────────────────────────
+
+    DomainCrawlEnrichmentRequested:
+      entityType: domain
+      action: crawl_enrichment_requested
+      version: "1.0.0"
+      summary: Requests Common Crawl CDX API enrichment for a dropped domain from go-analysis.
+      tags: [domain, dropcatch, crawl]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld, detected_at]
+          properties:
+            domain:      { type: string }
+            tld:         { type: string }
+            detected_at: { type: string, format: date-time }
+
+    DomainCrawlEnrichmentCompleted:
+      entityType: domain
+      action: crawl_enrichment_completed
+      version: "1.0.0"
+      summary: Common Crawl CDX API enrichment result from go-analysis.
+      tags: [domain, dropcatch, crawl]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld, found]
+          properties:
+            domain:             { type: string }
+            tld:                { type: string }
+            found:              { type: boolean }
+            page_count:         { type: integer }
+            backlink_estimate:  { type: integer }
+            content_category:   { type: string, examples: [Technology, Finance] }
+            content_language:   { type: string, examples: [en, de] }
+            title_keywords:     { type: array, items: { type: string } }
+            last_crawled_at:    { type: string, format: date-time }
+
+    # ── Feature extraction ─────────────────────────────────────────────────
+
+    DomainFeaturesExtracted:
+      entityType: domain
+      action: features_extracted
+      version: "1.0.0"
+      summary: >
+        Full feature vector for a dropped domain. Combines zone analysis,
+        TLD coverage, crawl signals, and AI scores. Triggers DomainExpiredEvent.
+      tags: [domain, dropcatch, features]
+      payload:
+        schema:
+          type: object
+          required: [domain, tld, sld, sld_length]
+          properties:
+            domain:                { type: string }
+            tld:                   { type: string }
+            sld:                   { type: string }
+            sld_length:            { type: integer }
+            has_digits:            { type: boolean }
+            has_dashes:            { type: boolean }
+            vowel_ratio:           { type: number }
+            consonant_run_max:     { type: integer }
+            zone_age_days:         { type: integer }
+            tlds_available:        { type: array, items: { type: string } }
+            tlds_checked:          { type: integer }
+            has_crawl_history:     { type: boolean }
+            crawl_page_count:      { type: integer }
+            backlink_estimate:     { type: integer }
+            content_category:      { type: string }
+            content_language:      { type: string }
+            content_keywords:      { type: array, items: { type: string } }
+
+    # ── Final enriched event ───────────────────────────────────────────────
+
+    DomainExpired:
+      entityType: domain
+      action: expired
+      version: "1.0.0"
+      summary: >
+        Fully-enriched domain expiry event. source=dropcatch, is_enriched=true.
+        Consumed by the analysis pipeline (DomainAnalysisRequestedEvent).
+      tags: [domain, expired, enriched]
+      payload:
+        # Boundary event — schema is also owned by the Python redelay system.
+        # When redelay is running, prefer the live asyncapi ref:
+        #   $ref: "asyncapi#/components/messages/DomainExpiredPayload"
+        schema:
+          type: object
+          required: [domain, source, is_enriched]
+          properties:
+            domain:       { type: string }
+            source:       { type: string, enum: [scraper, dropcatch] }
+            is_enriched:  { type: boolean }
+            has_hyphens:  { type: boolean }
+            has_numbers:  { type: boolean }
+            end_date:     { type: string, format: date }
+
+  policies:
+
+    eventBusRetry:
+      maxAttempts: 5
+      initialDelayMs: 1000
+      backoff: exponential
+      maxDelayMs: 60000
+      deadLetterQueue: true

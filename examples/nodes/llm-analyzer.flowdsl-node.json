@@ -1,0 +1,118 @@
+{
+  "id": "flowdsl/llm-analyzer",
+  "name": "LLM Analyzer",
+  "version": "1.0.0",
+  "summary": "Passes the incoming payload through an LLM with a configurable prompt and emits the analysis result.",
+  "description": "# LLM Analyzer\n\nSends the incoming payload to a large language model along with a user-defined prompt. The model's response is emitted as an `AnalysisResult` event. Supports structured JSON output mode for downstream parsing.\n\n## Use cases\n- Classify or score incoming documents\n- Extract structured data from free-form text\n- Summarize long content into short descriptions\n- Detect sentiment or intent\n\n## Notes\n- The full payload is serialized to JSON and injected into the prompt context\n- Use `outputFormat: json` when the next node expects a structured object\n- Token usage is reported in `tokensUsed` for cost monitoring",
+  "kind": "llm",
+  "language": "python",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-python",
+  "docsUrl": "https://flowdsl.com/nodes/llm-analyzer",
+  "icon": "🤖",
+  "color": "#7C3AED",
+  "tags": ["llm", "ai", "analysis", "classification", "nlp"],
+  "runtime": {
+    "handler": "flowdsl.nodes.llm.LlmAnalyzerNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "Accepts any JSON payload. The full object is serialized and provided as context to the LLM."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "AnalysisResult",
+      "description": "Emitted after the LLM responds with the analysis.",
+      "schema": {
+        "type": "object",
+        "required": ["result", "model", "tokensUsed", "finishReason"],
+        "properties": {
+          "result": {
+            "description": "The LLM's response. String when outputFormat is 'text', object when 'json'."
+          },
+          "model": {
+            "type": "string",
+            "description": "The model identifier that produced this result.",
+            "examples": ["claude-sonnet-4-5", "gpt-4o"]
+          },
+          "tokensUsed": {
+            "type": "object",
+            "description": "Token consumption breakdown.",
+            "properties": {
+              "input": { "type": "integer" },
+              "output": { "type": "integer" },
+              "total": { "type": "integer" }
+            }
+          },
+          "finishReason": {
+            "type": "string",
+            "description": "Why the model stopped generating.",
+            "enum": ["stop", "length", "content_filter", "error"]
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["prompt"],
+    "properties": {
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "description": "Instruction sent to the LLM along with the payload. Use {{field}} to reference payload fields.",
+        "x-ui": { "placeholder": "Analyze the input and extract the key topics as a JSON array.", "order": 1, "group": "Model" }
+      },
+      "model": {
+        "type": "string",
+        "title": "Model",
+        "description": "LLM model to use for analysis.",
+        "enum": ["gpt-4o", "claude-sonnet-4-5", "gemini-1.5-pro"],
+        "default": "claude-sonnet-4-5",
+        "x-ui": { "order": 2, "group": "Model" }
+      },
+      "temperature": {
+        "type": "number",
+        "title": "Temperature",
+        "description": "Sampling temperature. Lower values produce more deterministic output.",
+        "default": 0.3,
+        "minimum": 0,
+        "maximum": 2,
+        "x-ui": { "order": 3, "group": "Model" }
+      },
+      "maxTokens": {
+        "type": "number",
+        "title": "Max Tokens",
+        "description": "Maximum number of tokens in the model's response.",
+        "default": 1000,
+        "minimum": 1,
+        "x-ui": { "order": 4, "group": "Model" }
+      },
+      "outputFormat": {
+        "type": "string",
+        "title": "Output Format",
+        "description": "Whether the model should respond as plain text or structured JSON.",
+        "enum": ["text", "json"],
+        "default": "text",
+        "x-ui": { "order": 5, "group": "Output" }
+      },
+      "systemPrompt": {
+        "type": "string",
+        "title": "System Prompt",
+        "description": "Optional system-level instruction that sets the model's persona or constraints.",
+        "x-ui": { "placeholder": "You are a helpful data extraction assistant.", "order": 6, "group": "Model" }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

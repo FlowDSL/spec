@@ -3,7 +3,7 @@
   "info": {
     "title": "Domain Drop Catch Flows",
     "version": "1.0.0",
-    "description": "High-throughput domain expiry pipeline with stateful LLM analysis stage. Demonstrates mixed delivery modes: direct for fast transforms, ephemeralQueue for burst smoothing, durableQueue for expensive LLM stages, and eventBus for external publication."
+    "description": "High-throughput domain expiry pipeline with stateful LLM analysis stage. Demonstrates mixed delivery modes: direct for fast transforms, ephemeralQueue for burst smoothing, durableQueue for expensive LLM stages, and eventBus for external publication. All schemas are self-contained — no external specification dependencies required."
   },
   "servers": {
     "default": {
@@ -11,11 +11,6 @@
       "protocol": "hybrid",
       "description": "Default hybrid runtime — resolves delivery mode to concrete backend"
     }
-  },
-  "externalDocs": {
-    "asyncapi": "/asyncapi.json",
-    "openapi": "/openapi.json",
-    "description": "AsyncAPI document contains all external event schemas. OpenAPI describes HTTP management endpoints."
   },
   "flows": {
     "domain_drop_pipeline": {
@@ -25,9 +20,9 @@
       "entrypoints": [
         {
           "message": {
-            "$ref": "asyncapi#/components/messages/DomainExpiredPayload"
+            "$ref": "#/components/packets/DomainExpiredPacket"
           },
-          "description": "Triggered when a domain expiry event arrives on the Kafka bus"
+          "description": "Triggered when a domain expiry event is received"
         }
       ],
       "nodes": {
@@ -122,8 +117,9 @@
       "entrypoints": [
         {
           "message": {
-            "$ref": "asyncapi#/components/messages/NewEmailReceived"
-          }
+            "$ref": "#/components/packets/IncomingEmailPacket"
+          },
+          "description": "Triggered when a new email is received"
         }
       ],
       "nodes": {
@@ -196,9 +192,9 @@
         },
         "inputs": [
           {
-            "name": "DomainExpiredPayload",
+            "name": "DomainExpired",
             "message": {
-              "$ref": "asyncapi#/components/messages/DomainExpiredPayload"
+              "$ref": "#/components/packets/DomainExpiredPacket"
             }
           }
         ],
@@ -397,9 +393,9 @@
         },
         "inputs": [
           {
-            "name": "NewEmailReceived",
+            "name": "IncomingEmail",
             "message": {
-              "$ref": "asyncapi#/components/messages/NewEmailReceived"
+              "$ref": "#/components/packets/IncomingEmailPacket"
             }
           }
         ],
@@ -549,6 +545,29 @@
     },
 
     "packets": {
+      "DomainExpiredPacket": {
+        "type": "object",
+        "description": "An expiring domain event received by this flow.",
+        "required": ["domain", "dropDate"],
+        "properties": {
+          "domain": { "type": "string", "examples": ["example.com"] },
+          "dropDate": { "type": "string", "format": "date" },
+          "tld": { "type": "string", "examples": ["com"] },
+          "registrar": { "type": "string" }
+        }
+      },
+      "IncomingEmailPacket": {
+        "type": "object",
+        "description": "An incoming email message received by this flow.",
+        "required": ["emailId", "subject", "from", "body"],
+        "properties": {
+          "emailId": { "type": "string" },
+          "subject": { "type": "string" },
+          "from": { "type": "string" },
+          "body": { "type": "string" },
+          "receivedAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "RulePassedDomainPacket": {
         "type": "object",
         "description": "A domain that passed local rule filtering.",

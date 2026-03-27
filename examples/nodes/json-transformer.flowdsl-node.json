@@ -1,0 +1,56 @@
+{
+  "id": "flowdsl/json-transformer",
+  "name": "JSON Transformer",
+  "version": "1.0.0",
+  "summary": "Transforms the incoming payload using a jq expression and emits the result.",
+  "description": "# JSON Transformer\n\nApplies a [jq](https://jqlang.github.io/jq/) expression to the incoming payload and emits the result as a `TransformedPayload` event. Useful for reshaping, renaming, filtering, or projecting fields before passing data to the next node.\n\n## Use cases\n- Rename or flatten deeply nested JSON fields\n- Project a subset of fields from a large payload\n- Combine or compute fields using jq expressions\n- Convert array shapes for downstream nodes\n\n## Examples\n\nProject fields:\n```\n{name: .user.name, email: .user.email}\n```\n\nFlatten nested object:\n```\n{id: .order.id, total: .order.payment.total, currency: .order.payment.currency}\n```\n\nFilter array elements:\n```\n.items[] | select(.status == \"active\")\n```",
+  "kind": "transform",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/json-transformer",
+  "icon": "🔁",
+  "color": "#0EA5E9",
+  "tags": ["transform", "jq", "json", "mapping", "reshape"],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes.JsonTransformerNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "AnyPayload",
+      "description": "Any JSON payload to transform."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "TransformedPayload",
+      "description": "The result of applying the jq mapping to the input payload. Shape depends on the mapping expression.",
+      "schema": {
+        "type": "object",
+        "description": "Shape determined by the configured jq expression.",
+        "additionalProperties": true
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["mapping"],
+    "properties": {
+      "mapping": {
+        "type": "string",
+        "title": "jq Mapping",
+        "description": "A jq expression applied to the incoming payload. The result becomes the output payload.",
+        "x-ui": { "placeholder": "{name: .user.name, email: .user.email}", "order": 1 }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z"
+}

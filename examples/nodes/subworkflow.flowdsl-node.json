@@ -1,0 +1,139 @@
+{
+  "id": "flowdsl/subworkflow",
+  "name": "Subworkflow",
+  "version": "1.0.0",
+  "summary": "Delegates processing to another FlowDSL workflow and returns the result.",
+  "description": "# Subworkflow\n\nInvokes a separate FlowDSL workflow by reference, passing the input packet as the entrypoint message. The child workflow executes to completion and returns its terminal output back to the parent flow.\n\n## Use cases\n- Compose large pipelines from reusable sub-pipelines\n- Encapsulate complex processing behind a single node\n- Call shared workflows maintained by other teams\n- Build hierarchical flow architectures\n\n## Execution model\n- **Synchronous**: waits for the child workflow to complete before emitting output\n- **Input mapping**: the input packet is passed as the child flow's entrypoint message\n- **Output mapping**: the child flow's terminal node output becomes this node's output\n- **Error propagation**: if the child workflow fails, the error propagates to the parent edge's retry policy\n\n## Notes\n- `workflowRef` can be a local `#/flows/child_flow` reference or a remote URL\n- Timeout inherited from parent node's `execution.timeoutMs` or the child flow's own limits\n- Nested subworkflows are supported (depth limit enforced by runtime)",
+  "kind": "subworkflow",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/subworkflow",
+  "icon": "🔗",
+  "color": "#EC4899",
+  "tags": [
+    "workflow",
+    "compose",
+    "delegate",
+    "orchestration",
+    "subflow"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/orchestrator.SubworkflowNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "Input",
+      "description": "Packet passed as the entrypoint message of the child workflow.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — must match the child workflow's entrypoint expectation."
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Output",
+      "description": "Terminal output from the child workflow.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — determined by the child workflow's terminal node output."
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "workflowRef"
+    ],
+    "properties": {
+      "workflowRef": {
+        "type": "string",
+        "title": "Workflow Reference",
+        "description": "Reference to the child workflow. Local: #/flows/my_flow. Remote: https://example.com/flow.flowdsl.json#/flows/main.",
+        "x-ui": {
+          "placeholder": "#/flows/child_pipeline",
+          "order": 1,
+          "group": "Workflow"
+        }
+      },
+      "inputMapping": {
+        "type": "object",
+        "title": "Input Mapping",
+        "description": "Optional field mapping from parent packet to child entrypoint. Omit to pass the full packet.",
+        "x-ui": {
+          "order": 2,
+          "group": "Mapping"
+        }
+      },
+      "outputMapping": {
+        "type": "object",
+        "title": "Output Mapping",
+        "description": "Optional field mapping from child terminal output to parent packet. Omit to return the full output.",
+        "x-ui": {
+          "order": 3,
+          "group": "Mapping"
+        }
+      },
+      "timeoutMs": {
+        "type": "number",
+        "title": "Timeout (ms)",
+        "description": "Maximum time to wait for the child workflow to complete. 0 = inherit from execution config.",
+        "default": 0,
+        "minimum": 0,
+        "x-ui": {
+          "order": 4,
+          "group": "Execution"
+        }
+      },
+      "failOnChildError": {
+        "type": "boolean",
+        "title": "Fail on Child Error",
+        "description": "If true, child workflow errors propagate as node failure. If false, errors are returned in the output packet.",
+        "default": true,
+        "x-ui": {
+          "order": 5,
+          "group": "Execution"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-03-29T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Layers",
+    "color": "#EC4899",
+    "packetPreview": {
+      "type": "WorkflowResult",
+      "fields": [
+        {
+          "name": "workflowRef",
+          "type": "string",
+          "example": "\"#/flows/child_pipeline\""
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "example": "\"completed\""
+        },
+        {
+          "name": "output",
+          "type": "object",
+          "example": "{ score: 0.95, ... }"
+        },
+        {
+          "name": "durationMs",
+          "type": "number",
+          "example": "1250"
+        }
+      ]
+    }
+  }
+}

@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/json-transformer",
   "icon": "🔁",
   "color": "#0EA5E9",
-  "tags": ["transform", "jq", "json", "mapping", "reshape"],
+  "tags": [
+    "transform",
+    "jq",
+    "json",
+    "mapping",
+    "reshape"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.JsonTransformerNode",
     "invocation": "inProcess"
@@ -40,17 +46,26 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["mapping"],
+    "required": [
+      "mapping"
+    ],
     "properties": {
       "mapping": {
         "type": "string",
         "title": "jq Mapping",
         "description": "A jq expression applied to the incoming payload. The result becomes the output payload.",
-        "x-ui": { "placeholder": "{name: .user.name, email: .user.email}", "order": 1 }
+        "x-ui": {
+          "placeholder": "{name: .user.name, email: .user.email}",
+          "order": 1
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Braces",
+    "color": "#10B981"
+  }
 }

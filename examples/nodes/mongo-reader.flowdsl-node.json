@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/mongo-reader",
   "icon": "🍃",
   "color": "#10B981",
-  "tags": ["mongodb", "database", "source", "polling", "nosql"],
+  "tags": [
+    "mongodb",
+    "database",
+    "source",
+    "polling",
+    "nosql"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.MongoReaderNode",
     "invocation": "inProcess"
@@ -35,25 +41,40 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["connectionId", "collection"],
+    "required": [
+      "connectionId",
+      "collection"
+    ],
     "properties": {
       "connectionId": {
         "type": "string",
         "title": "Connection",
         "description": "ID of a saved MongoDB connection in the runtime connection store.",
-        "x-ui": { "placeholder": "my-mongo-connection", "order": 1, "group": "Connection" }
+        "x-ui": {
+          "placeholder": "my-mongo-connection",
+          "order": 1,
+          "group": "Connection"
+        }
       },
       "collection": {
         "type": "string",
         "title": "Collection",
         "description": "Name of the MongoDB collection to query.",
-        "x-ui": { "placeholder": "users", "order": 2, "group": "Query" }
+        "x-ui": {
+          "placeholder": "users",
+          "order": 2,
+          "group": "Query"
+        }
       },
       "query": {
         "type": "string",
         "title": "Query",
         "description": "MongoDB query expression as a JSON string. Leave empty to match all documents.",
-        "x-ui": { "placeholder": "{\"status\": \"pending\"}", "order": 3, "group": "Query" }
+        "x-ui": {
+          "placeholder": "{\"status\": \"pending\"}",
+          "order": 3,
+          "group": "Query"
+        }
       },
       "limit": {
         "type": "number",
@@ -61,7 +82,10 @@
         "description": "Maximum number of documents to retrieve per poll.",
         "default": 100,
         "minimum": 1,
-        "x-ui": { "order": 4, "group": "Query" }
+        "x-ui": {
+          "order": 4,
+          "group": "Query"
+        }
       },
       "pollIntervalSec": {
         "type": "number",
@@ -69,11 +93,18 @@
         "description": "How often to run the query.",
         "default": 60,
         "minimum": 5,
-        "x-ui": { "order": 5, "group": "Polling" }
+        "x-ui": {
+          "order": 5,
+          "group": "Polling"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Database",
+    "color": "#14B8A6"
+  }
 }

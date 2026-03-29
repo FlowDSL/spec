@@ -264,7 +264,8 @@
             "checkpoint",
             "publish",
             "terminal",
-            "integration"
+            "integration",
+            "subworkflow"
           ]
         },
         "runtime": {

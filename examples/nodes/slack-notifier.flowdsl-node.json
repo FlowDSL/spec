@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/slack-notifier",
   "icon": "💬",
   "color": "#4A154B",
-  "tags": ["slack", "notification", "action", "messaging", "alert"],
+  "tags": [
+    "slack",
+    "notification",
+    "action",
+    "messaging",
+    "alert"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.SlackNotifierNode",
     "invocation": "inProcess"
@@ -30,38 +36,61 @@
   "outputs": [],
   "settingsSchema": {
     "type": "object",
-    "required": ["webhookUrl", "messageTemplate"],
+    "required": [
+      "webhookUrl",
+      "messageTemplate"
+    ],
     "properties": {
       "webhookUrl": {
         "type": "string",
         "title": "Webhook URL",
         "description": "Slack Incoming Webhook URL. Stored securely.",
         "format": "password",
-        "x-ui": { "placeholder": "https://hooks.slack.com/services/...", "order": 1, "group": "Connection", "secret": true }
+        "x-ui": {
+          "placeholder": "https://hooks.slack.com/services/...",
+          "order": 1,
+          "group": "Connection",
+          "secret": true
+        }
       },
       "channel": {
         "type": "string",
         "title": "Channel",
         "description": "Slack channel to post to. Overrides the channel set on the webhook if provided.",
         "default": "#general",
-        "x-ui": { "placeholder": "#alerts", "order": 2, "group": "Message" }
+        "x-ui": {
+          "placeholder": "#alerts",
+          "order": 2,
+          "group": "Message"
+        }
       },
       "messageTemplate": {
         "type": "string",
         "title": "Message Template",
         "description": "Handlebars template for the message body. Reference payload fields with {{fieldName}}.",
-        "x-ui": { "placeholder": ":rotating_light: *Alert*: {{title}} — score: {{score}}", "order": 3, "group": "Message" }
+        "x-ui": {
+          "placeholder": ":rotating_light: *Alert*: {{title}} — score: {{score}}",
+          "order": 3,
+          "group": "Message"
+        }
       },
       "iconEmoji": {
         "type": "string",
         "title": "Icon Emoji",
         "description": "Emoji used as the bot icon in Slack.",
         "default": ":robot_face:",
-        "x-ui": { "order": 4, "group": "Message" }
+        "x-ui": {
+          "order": 4,
+          "group": "Message"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "MessageSquare",
+    "color": "#F97316"
+  }
 }

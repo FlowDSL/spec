@@ -1,0 +1,203 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "Webhook Alert Pipeline",
+    "version": "1.0.0",
+    "description": "Receives webhook events, filters by severity, and fans out to Slack and SMS for critical incidents."
+  },
+  "flows": {
+    "webhook_alert": {
+      "summary": "Webhook alert pipeline",
+      "description": "Ingests incoming webhook events, applies severity filtering, and dispatches alerts to Slack and SMS.",
+      "nodes": {
+        "webhook_receiver": {
+          "$ref": "#/components/nodes/WebhookReceiverNode"
+        },
+        "severity_filter": {
+          "$ref": "#/components/nodes/SeverityFilterNode"
+        },
+        "slack_notifier": {
+          "$ref": "#/components/nodes/SlackNotifierNode"
+        },
+        "sms_alert": {
+          "$ref": "#/components/nodes/SmsAlertNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "webhook_receiver",
+          "to": "severity_filter",
+          "packet": "#/components/packets/WebhookEvent",
+          "description": "Forward raw event to severity filter",
+          "delivery": {
+            "mode": "direct"
+          }
+        },
+        {
+          "from": "severity_filter",
+          "to": "slack_notifier",
+          "packet": "#/components/packets/AlertPayload",
+          "when": "output.severity != 'low'",
+          "description": "Post medium and high severity alerts to Slack",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis"
+          }
+        },
+        {
+          "from": "severity_filter",
+          "to": "sms_alert",
+          "packet": "#/components/packets/AlertPayload",
+          "when": "output.severity == 'critical'",
+          "description": "Critical alerts trigger an SMS to on-call",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/alertRetry"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "policies": {
+      "alertRetry": {
+        "maxAttempts": 5,
+        "initialDelayMs": 1000,
+        "backoff": "exponential",
+        "maxDelayMs": 30000,
+        "deadLetterQueue": true
+      }
+    },
+    "packets": {
+      "WebhookEvent": {
+        "description": "Raw payload received from an incoming webhook",
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "description": "Type of event emitted by the source system"
+          },
+          "source": {
+            "type": "string",
+            "description": "Originating service or integration name"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Arbitrary event data from the webhook body"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event_type",
+          "source",
+          "received_at"
+        ],
+        "type": "object"
+      },
+      "AlertPayload": {
+        "description": "Normalised alert ready for dispatch",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable alert message"
+          },
+          "severity": {
+            "type": "string",
+            "description": "One of: low, medium, high, critical"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "message",
+          "severity",
+          "timestamp"
+        ],
+        "type": "object"
+      }
+    },
+    "nodes": {
+      "WebhookReceiverNode": {
+        "operationId": "receive_webhook",
+        "title": "Webhook Receiver",
+        "summary": "Listen for incoming HTTP webhook events from external systems",
+        "kind": "source",
+        "x-ui": {
+          "icon": "Webhook",
+          "color": "#3B82F6",
+          "position": {
+            "x": 300,
+            "y": 80
+          },
+          "registryId": "webhook-receiver"
+        }
+      },
+      "SeverityFilterNode": {
+        "operationId": "filter_by_severity",
+        "title": "Severity Filter",
+        "summary": "Route events by severity level \u2014 drop low-severity noise",
+        "kind": "router",
+        "x-ui": {
+          "icon": "Filter",
+          "color": "#F59E0B",
+          "position": {
+            "x": 300,
+            "y": 240
+          },
+          "registryId": "filter-node"
+        }
+      },
+      "SlackNotifierNode": {
+        "operationId": "notify_slack",
+        "title": "Slack Notifier",
+        "summary": "Post alert summary to the ops Slack channel",
+        "kind": "action",
+        "x-ui": {
+          "icon": "MessageSquare",
+          "color": "#F97316",
+          "position": {
+            "x": 140,
+            "y": 420
+          },
+          "registryId": "slack-notifier"
+        }
+      },
+      "SmsAlertNode": {
+        "operationId": "send_sms_alert",
+        "title": "SMS Alert",
+        "summary": "Send an SMS to the on-call engineer for critical incidents",
+        "kind": "action",
+        "execution": {
+          "timeoutMs": 10000,
+          "concurrency": 5,
+          "maxRetries": 3
+        },
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.source + ':' + input.payload.timestamp",
+          "ttlSeconds": 3600,
+          "store": "redis"
+        },
+        "x-ui": {
+          "icon": "Smartphone",
+          "color": "#F97316",
+          "position": {
+            "x": 460,
+            "y": 420
+          },
+          "registryId": "sms-alert"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "Kafka Stream Filter",
+    "version": "1.0.0",
+    "description": "Consumes a raw Kafka topic, enriches and filters events, then publishes clean events to a downstream topic."
+  },
+  "flows": {
+    "kafka_stream_filter": {
+      "summary": "Kafka stream filter",
+      "description": "Reads raw events from Kafka, normalises the shape, filters out noise, and republishes valid events.",
+      "nodes": {
+        "kafka_consumer": {
+          "$ref": "#/components/nodes/KafkaConsumerNode"
+        },
+        "json_transformer": {
+          "$ref": "#/components/nodes/JsonTransformerNode"
+        },
+        "event_filter": {
+          "$ref": "#/components/nodes/EventFilterNode"
+        },
+        "kafka_producer": {
+          "$ref": "#/components/nodes/KafkaProducerNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "kafka_consumer",
+          "to": "json_transformer",
+          "packet": "#/components/packets/RawEvent",
+          "description": "Stream raw Kafka messages to transformer",
+          "delivery": {
+            "mode": "direct"
+          },
+          "batching": {
+            "enabled": true,
+            "batchSize": 100,
+            "maxWaitMs": 500
+          }
+        },
+        {
+          "from": "json_transformer",
+          "to": "event_filter",
+          "packet": "#/components/packets/EnrichedEvent",
+          "description": "Buffer enriched events before filtering",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis"
+          }
+        },
+        {
+          "from": "event_filter",
+          "to": "kafka_producer",
+          "packet": "#/components/packets/EnrichedEvent",
+          "when": "output.type != 'noise' && output.valid == true",
+          "description": "Publish only valid, non-noise events downstream",
+          "delivery": {
+            "mode": "eventBus",
+            "eventBus": {
+              "bus": "kafka",
+              "topic": "events.processed",
+              "partitionKey": "output.type"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "events": {
+      "RawEventIngested": {
+        "summary": "A raw event has been consumed from the Kafka topic",
+        "version": "1.0.0",
+        "entityType": "event",
+        "action": "ingested",
+        "tags": ["kafka", "raw", "stream"],
+        "payload": {
+          "$ref": "#/components/packets/RawEvent"
+        }
+      },
+      "EventPublished": {
+        "summary": "A validated event has been published to the downstream topic",
+        "version": "1.0.0",
+        "entityType": "event",
+        "action": "published",
+        "tags": ["kafka", "processed", "stream"],
+        "payload": {
+          "$ref": "#/components/packets/EnrichedEvent"
+        }
+      }
+    },
+    "packets": {
+      "RawEvent": {
+        "description": "Raw message consumed from the Kafka topic",
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "object",
+            "description": "Deserialized message body"
+          },
+          "offset": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "topic",
+          "value",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "EnrichedEvent": {
+        "description": "Normalised and enriched event ready for downstream processing",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Semantic event type"
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Whether the event passed schema validation"
+          },
+          "data": {
+            "type": "object"
+          },
+          "processed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "valid",
+          "data"
+        ],
+        "type": "object"
+      }
+    },
+    "nodes": {
+      "KafkaConsumerNode": {
+        "operationId": "consume_raw_events",
+        "title": "Kafka Consumer",
+        "summary": "Subscribe to the raw events Kafka topic and stream messages",
+        "kind": "source",
+        "x-ui": {
+          "icon": "Radio",
+          "color": "#3B82F6",
+          "position": {
+            "x": 300,
+            "y": 80
+          },
+          "registryId": "kafka-consumer"
+        }
+      },
+      "JsonTransformerNode": {
+        "operationId": "enrich_event",
+        "title": "JSON Transformer",
+        "summary": "Validate schema, assign event type, and enrich with metadata",
+        "kind": "transform",
+        "execution": {
+          "timeoutMs": 5000,
+          "concurrency": 50
+        },
+        "x-ui": {
+          "icon": "Braces",
+          "color": "#10B981",
+          "position": {
+            "x": 300,
+            "y": 240
+          },
+          "registryId": "json-transformer"
+        }
+      },
+      "EventFilterNode": {
+        "operationId": "filter_events",
+        "title": "Event Filter",
+        "summary": "Drop noise and invalid events \u2014 pass only clean, typed events",
+        "kind": "router",
+        "x-ui": {
+          "icon": "Filter",
+          "color": "#F59E0B",
+          "position": {
+            "x": 300,
+            "y": 400
+          },
+          "registryId": "filter-node"
+        }
+      },
+      "KafkaProducerNode": {
+        "operationId": "publish_processed_events",
+        "title": "Kafka Producer",
+        "summary": "Publish filtered events to the downstream processed-events topic",
+        "kind": "terminal",
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.id",
+          "ttlSeconds": 3600,
+          "store": "redis"
+        },
+        "x-ui": {
+          "icon": "RadioTower",
+          "color": "#EF4444",
+          "position": {
+            "x": 300,
+            "y": 560
+          },
+          "registryId": "kafka-producer"
+        }
+      }
+    }
+  }
+}

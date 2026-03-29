@@ -1,0 +1,190 @@
+{
+  "id": "flowdsl/kafka-producer",
+  "name": "Kafka Producer",
+  "version": "1.0.0",
+  "summary": "Publishes packets as messages to a Kafka topic.",
+  "description": "# Kafka Producer\n\nSerializes the input packet and produces it to a Kafka topic. Supports JSON and Avro serialization. Provides delivery confirmation with offset and partition metadata.\n\n## Use cases\n- Publish processed events back to Kafka\n- Fan-out results to external consumers\n- Bridge FlowDSL flows to Kafka-native systems\n\n## Notes\n- Supports configurable partition keys for ordering\n- Compression: gzip, snappy, lz4, or none\n- Acknowledgment levels: none, leader, all",
+  "kind": "terminal",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/kafka-producer",
+  "icon": "📡",
+  "color": "#DC2626",
+  "tags": [
+    "kafka",
+    "publish",
+    "stream",
+    "messaging",
+    "sink"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/kafka.ProducerNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "Data",
+      "description": "Packet to serialize and publish to Kafka.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — serialized according to the configured serializer."
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Ack",
+      "description": "Kafka delivery acknowledgment with offset metadata.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "topic",
+          "partition",
+          "offset"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Target topic."
+          },
+          "partition": {
+            "type": "integer",
+            "description": "Partition the message was written to."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Message offset in the partition."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Broker timestamp."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "brokers",
+      "topic"
+    ],
+    "properties": {
+      "brokers": {
+        "type": "string",
+        "title": "Broker Addresses",
+        "description": "Comma-separated Kafka broker addresses.",
+        "x-ui": {
+          "placeholder": "kafka:9092",
+          "order": 1,
+          "group": "Connection"
+        }
+      },
+      "topic": {
+        "type": "string",
+        "title": "Topic",
+        "description": "Target topic — supports {input.field} interpolation.",
+        "x-ui": {
+          "placeholder": "processed.events",
+          "order": 2,
+          "group": "Connection"
+        }
+      },
+      "partitionKey": {
+        "type": "string",
+        "title": "Partition Key",
+        "description": "Field to use as the message partition key.",
+        "x-ui": {
+          "placeholder": "id",
+          "order": 3,
+          "group": "Routing"
+        }
+      },
+      "serializer": {
+        "type": "string",
+        "title": "Serializer",
+        "description": "Message serialization format.",
+        "enum": [
+          "json",
+          "avro",
+          "raw"
+        ],
+        "default": "json",
+        "x-ui": {
+          "order": 4,
+          "group": "Serialization"
+        }
+      },
+      "compression": {
+        "type": "string",
+        "title": "Compression",
+        "description": "Message compression codec.",
+        "enum": [
+          "none",
+          "gzip",
+          "snappy",
+          "lz4"
+        ],
+        "default": "none",
+        "x-ui": {
+          "order": 5,
+          "group": "Serialization"
+        }
+      },
+      "acks": {
+        "type": "string",
+        "title": "Acknowledgments",
+        "description": "Required acknowledgment level.",
+        "enum": [
+          "none",
+          "leader",
+          "all"
+        ],
+        "default": "all",
+        "x-ui": {
+          "order": 6,
+          "group": "Reliability"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "RadioTower",
+    "color": "#EF4444",
+    "packetPreview": {
+      "type": "KafkaAck",
+      "fields": [
+        {
+          "name": "topic",
+          "type": "string",
+          "example": "\"processed.events\""
+        },
+        {
+          "name": "partition",
+          "type": "number",
+          "example": "0"
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "example": "103012"
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "example": "\"2024-01-15T10:22:01Z\""
+        }
+      ]
+    }
+  }
+}

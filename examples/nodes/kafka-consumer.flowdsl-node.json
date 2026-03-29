@@ -1,0 +1,208 @@
+{
+  "id": "flowdsl/kafka-consumer",
+  "name": "Kafka Consumer",
+  "version": "1.0.0",
+  "summary": "Reads messages from a Kafka topic and emits them as packets.",
+  "description": "# Kafka Consumer\n\nSubscribes to one or more Kafka topics using a consumer group. Supports Avro, JSON, and raw byte deserialization. Emits one packet per Kafka message with metadata (offset, partition, timestamp).\n\n## Use cases\n- Ingest events from existing Kafka infrastructure\n- Build stream-processing pipelines\n- Bridge Kafka topics into FlowDSL flows\n\n## Notes\n- Uses Go Kafka client with consumer-group rebalancing\n- Supports starting from earliest, latest, or committed offset\n- Schema Registry integration available for Avro deserialization",
+  "kind": "source",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/kafka-consumer",
+  "icon": "📡",
+  "color": "#4F46E5",
+  "tags": [
+    "kafka",
+    "source",
+    "stream",
+    "messaging",
+    "event"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/kafka.ConsumerNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "Message",
+      "description": "Emitted for each Kafka message consumed from the topic.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "topic",
+          "partition",
+          "offset",
+          "value",
+          "timestamp"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Kafka topic the message was consumed from."
+          },
+          "partition": {
+            "type": "integer",
+            "description": "Partition number."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Message offset within the partition."
+          },
+          "key": {
+            "type": "string",
+            "description": "Message key (may be null)."
+          },
+          "value": {
+            "type": "object",
+            "description": "Deserialized message value."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Kafka message timestamp."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "brokers",
+      "topic",
+      "groupId"
+    ],
+    "properties": {
+      "brokers": {
+        "type": "string",
+        "title": "Broker Addresses",
+        "description": "Comma-separated list of Kafka broker addresses.",
+        "x-ui": {
+          "placeholder": "kafka:9092,kafka2:9092",
+          "order": 1,
+          "group": "Connection"
+        }
+      },
+      "topic": {
+        "type": "string",
+        "title": "Topic",
+        "description": "Topic to consume from (supports regex with ^ prefix).",
+        "x-ui": {
+          "placeholder": "user.events",
+          "order": 2,
+          "group": "Connection"
+        }
+      },
+      "groupId": {
+        "type": "string",
+        "title": "Consumer Group ID",
+        "description": "Consumer group identifier for offset management.",
+        "x-ui": {
+          "placeholder": "flowdsl-consumer-group",
+          "order": 3,
+          "group": "Connection"
+        }
+      },
+      "deserializer": {
+        "type": "string",
+        "title": "Deserializer",
+        "description": "Message deserialization format.",
+        "enum": [
+          "json",
+          "avro",
+          "raw"
+        ],
+        "default": "json",
+        "x-ui": {
+          "order": 4,
+          "group": "Parsing"
+        }
+      },
+      "schemaRegistryUrl": {
+        "type": "string",
+        "title": "Schema Registry URL",
+        "description": "Confluent Schema Registry URL (required for Avro).",
+        "x-ui": {
+          "placeholder": "http://schema-registry:8081",
+          "order": 5,
+          "group": "Parsing"
+        }
+      },
+      "fromOffset": {
+        "type": "string",
+        "title": "Initial Offset",
+        "description": "Starting offset when no committed offset exists.",
+        "enum": [
+          "earliest",
+          "latest",
+          "none"
+        ],
+        "default": "latest",
+        "x-ui": {
+          "order": 6,
+          "group": "Behavior"
+        }
+      },
+      "batchSize": {
+        "type": "number",
+        "title": "Batch Size",
+        "description": "Number of messages to fetch per poll.",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 1000,
+        "x-ui": {
+          "order": 7,
+          "group": "Behavior"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Radio",
+    "color": "#3B82F6",
+    "packetPreview": {
+      "type": "KafkaMessage",
+      "fields": [
+        {
+          "name": "topic",
+          "type": "string",
+          "example": "\"user.events\""
+        },
+        {
+          "name": "partition",
+          "type": "number",
+          "example": "2"
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "example": "102891"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "example": "\"usr_abc123\""
+        },
+        {
+          "name": "value",
+          "type": "object",
+          "example": "{ id: 1, ... }"
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "example": "\"2024-01-15T10:22:00Z\""
+        }
+      ]
+    }
+  }
+}

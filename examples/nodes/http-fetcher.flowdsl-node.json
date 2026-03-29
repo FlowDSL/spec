@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/http-fetcher",
   "icon": "🌐",
   "color": "#0EA5E9",
-  "tags": ["http", "rest", "polling", "source", "api"],
+  "tags": [
+    "http",
+    "rest",
+    "polling",
+    "source",
+    "api"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.HttpFetcherNode",
     "invocation": "inProcess"
@@ -28,12 +34,20 @@
       "description": "Emitted after each successful HTTP request.",
       "schema": {
         "type": "object",
-        "required": ["statusCode", "body", "url"],
+        "required": [
+          "statusCode",
+          "body",
+          "url"
+        ],
         "properties": {
           "statusCode": {
             "type": "integer",
             "description": "HTTP response status code.",
-            "examples": [200, 201, 404]
+            "examples": [
+              200,
+              201,
+              404
+            ]
           },
           "body": {
             "type": "string",
@@ -42,7 +56,9 @@
           "headers": {
             "type": "object",
             "description": "Response headers as key-value pairs.",
-            "additionalProperties": { "type": "string" }
+            "additionalProperties": {
+              "type": "string"
+            }
           },
           "url": {
             "type": "string",
@@ -55,44 +71,74 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["url"],
+    "required": [
+      "url"
+    ],
     "properties": {
       "url": {
         "type": "string",
         "title": "URL",
         "description": "The HTTP endpoint to request.",
         "format": "uri",
-        "x-ui": { "placeholder": "https://api.example.com/data", "order": 1, "group": "Request" }
+        "x-ui": {
+          "placeholder": "https://api.example.com/data",
+          "order": 1,
+          "group": "Request"
+        }
       },
       "method": {
         "type": "string",
         "title": "HTTP Method",
         "description": "HTTP method to use.",
-        "enum": ["GET", "POST", "PUT", "PATCH"],
+        "enum": [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH"
+        ],
         "default": "GET",
-        "x-ui": { "order": 2, "group": "Request" }
+        "x-ui": {
+          "order": 2,
+          "group": "Request"
+        }
       },
       "headers": {
         "type": "object",
         "title": "Headers",
         "description": "Additional HTTP headers to include in the request.",
-        "additionalProperties": { "type": "string" },
-        "x-ui": { "order": 3, "group": "Request" }
+        "additionalProperties": {
+          "type": "string"
+        },
+        "x-ui": {
+          "order": 3,
+          "group": "Request"
+        }
       },
       "authType": {
         "type": "string",
         "title": "Authentication Type",
         "description": "Authentication scheme to use.",
-        "enum": ["none", "bearer", "basic"],
+        "enum": [
+          "none",
+          "bearer",
+          "basic"
+        ],
         "default": "none",
-        "x-ui": { "order": 4, "group": "Authentication" }
+        "x-ui": {
+          "order": 4,
+          "group": "Authentication"
+        }
       },
       "bearerToken": {
         "type": "string",
         "title": "Bearer Token",
         "description": "Token for Bearer authentication. Only used when authType is 'bearer'.",
         "format": "password",
-        "x-ui": { "order": 5, "group": "Authentication", "secret": true }
+        "x-ui": {
+          "order": 5,
+          "group": "Authentication",
+          "secret": true
+        }
       },
       "pollIntervalSec": {
         "type": "number",
@@ -100,11 +146,18 @@
         "description": "How often to send the request.",
         "default": 60,
         "minimum": 5,
-        "x-ui": { "order": 6, "group": "Polling" }
+        "x-ui": {
+          "order": 6,
+          "group": "Polling"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Globe",
+    "color": "#14B8A6"
+  }
 }

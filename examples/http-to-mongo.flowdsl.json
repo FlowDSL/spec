@@ -1,0 +1,239 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "HTTP to Mongo Sync",
+    "version": "1.0.0",
+    "description": "Triggered by a webhook, fetches data from an external HTTP API, normalises the shape, and persists to MongoDB."
+  },
+  "flows": {
+    "http_mongo_sync": {
+      "summary": "HTTP to Mongo sync",
+      "description": "On webhook trigger, fetches a remote resource via HTTP, transforms the response, and writes to MongoDB.",
+      "nodes": {
+        "webhook_receiver": {
+          "$ref": "#/components/nodes/WebhookReceiverNode"
+        },
+        "http_fetcher": {
+          "$ref": "#/components/nodes/HttpFetcherNode"
+        },
+        "json_transformer": {
+          "$ref": "#/components/nodes/JsonTransformerNode"
+        },
+        "mongo_writer": {
+          "$ref": "#/components/nodes/MongoWriterNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "webhook_receiver",
+          "to": "http_fetcher",
+          "packet": "#/components/packets/TriggerEvent",
+          "description": "Pass resource ID from webhook to HTTP fetcher",
+          "delivery": {
+            "mode": "direct"
+          }
+        },
+        {
+          "from": "http_fetcher",
+          "to": "json_transformer",
+          "packet": "#/components/packets/ApiResponse",
+          "description": "Buffer HTTP responses before transformation",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis"
+          }
+        },
+        {
+          "from": "json_transformer",
+          "to": "mongo_writer",
+          "packet": "#/components/packets/NormalizedRecord",
+          "description": "Durably persist normalised records \u2014 must not be lost",
+          "delivery": {
+            "mode": "checkpoint",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/persistRetry"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "policies": {
+      "persistRetry": {
+        "maxAttempts": 8,
+        "initialDelayMs": 500,
+        "backoff": "exponential",
+        "maxDelayMs": 30000,
+        "deadLetterQueue": true
+      }
+    },
+    "events": {
+      "WebhookReceived": {
+        "summary": "An external webhook trigger has been received",
+        "version": "1.0.0",
+        "entityType": "sync",
+        "action": "triggered",
+        "tags": ["webhook", "sync"],
+        "payload": {
+          "$ref": "#/components/packets/TriggerEvent"
+        }
+      },
+      "RecordSynced": {
+        "summary": "A normalized record has been written to MongoDB",
+        "version": "1.0.0",
+        "entityType": "record",
+        "action": "synced",
+        "tags": ["sync", "mongodb"],
+        "payload": {
+          "$ref": "#/components/packets/NormalizedRecord"
+        }
+      }
+    },
+    "packets": {
+      "TriggerEvent": {
+        "description": "Webhook trigger carrying the resource to sync",
+        "properties": {
+          "resource_id": {
+            "type": "string",
+            "description": "ID of the external resource to fetch"
+          },
+          "action": {
+            "type": "string",
+            "description": "created | updated | deleted"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_id",
+          "action"
+        ],
+        "type": "object"
+      },
+      "ApiResponse": {
+        "description": "Raw HTTP response from the external API",
+        "properties": {
+          "status": {
+            "type": "number"
+          },
+          "body": {
+            "type": "object",
+            "description": "Parsed JSON response body"
+          },
+          "headers": {
+            "type": "object"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "body"
+        ],
+        "type": "object"
+      },
+      "NormalizedRecord": {
+        "description": "Transformed record ready for storage",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "synced_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "payload",
+          "synced_at"
+        ],
+        "type": "object"
+      }
+    },
+    "nodes": {
+      "WebhookReceiverNode": {
+        "operationId": "receive_sync_trigger",
+        "title": "Webhook Receiver",
+        "summary": "Receive an HTTP webhook carrying the resource ID to sync",
+        "kind": "source",
+        "x-ui": {
+          "icon": "Webhook",
+          "color": "#3B82F6",
+          "position": {
+            "x": 300,
+            "y": 80
+          },
+          "registryId": "webhook-receiver"
+        }
+      },
+      "HttpFetcherNode": {
+        "operationId": "fetch_remote_resource",
+        "title": "HTTP Fetcher",
+        "summary": "Fetch the remote resource from an external REST API",
+        "kind": "integration",
+        "x-ui": {
+          "icon": "Globe",
+          "color": "#14B8A6",
+          "position": {
+            "x": 300,
+            "y": 240
+          },
+          "registryId": "http-fetcher"
+        }
+      },
+      "JsonTransformerNode": {
+        "operationId": "normalise_api_response",
+        "title": "JSON Transformer",
+        "summary": "Map API response fields to the internal NormalizedRecord schema",
+        "kind": "transform",
+        "x-ui": {
+          "icon": "Braces",
+          "color": "#10B981",
+          "position": {
+            "x": 300,
+            "y": 400
+          },
+          "registryId": "json-transformer"
+        }
+      },
+      "MongoWriterNode": {
+        "operationId": "write_to_mongo",
+        "title": "Mongo Writer",
+        "summary": "Upsert the normalised record into MongoDB",
+        "kind": "action",
+        "execution": {
+          "timeoutMs": 10000,
+          "concurrency": 20,
+          "maxRetries": 3
+        },
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.id + ':' + input.payload.source",
+          "ttlSeconds": 86400,
+          "store": "mongo"
+        },
+        "x-ui": {
+          "icon": "DatabaseBackup",
+          "color": "#F97316",
+          "position": {
+            "x": 300,
+            "y": 560
+          },
+          "registryId": "mongo-writer"
+        }
+      }
+    }
+  }
+}

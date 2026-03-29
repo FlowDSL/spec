@@ -1,0 +1,173 @@
+{
+  "id": "flowdsl/mysql-writer",
+  "name": "MySQL Writer",
+  "version": "1.0.0",
+  "summary": "Inserts or upserts packets into a MySQL table.",
+  "description": "# MySQL Writer\n\nWrites the input packet to a MySQL table using configurable INSERT, UPSERT (ON DUPLICATE KEY UPDATE), or REPLACE operations. Supports batch writes for high-throughput scenarios.\n\n## Use cases\n- Persist processed data to MySQL\n- Upsert records for idempotent writes\n- Batch-insert high-volume event data\n\n## Notes\n- columnMapping overrides field-to-column name mapping\n- Batch writes use a single transaction\n- upsertKey must be a unique/primary key column",
+  "kind": "terminal",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/mysql-writer",
+  "icon": "🐬",
+  "color": "#DC2626",
+  "tags": [
+    "mysql",
+    "database",
+    "sql",
+    "sink",
+    "writer"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/mysql.WriterNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "Data",
+      "description": "Packet containing the row data to write.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — fields mapped to table columns."
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Result",
+      "description": "Write confirmation with affected row count.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "rowsAffected",
+          "table"
+        ],
+        "properties": {
+          "insertId": {
+            "type": "integer",
+            "description": "Auto-increment ID of the inserted row (if applicable)."
+          },
+          "rowsAffected": {
+            "type": "integer",
+            "description": "Number of rows affected by the operation."
+          },
+          "table": {
+            "type": "string",
+            "description": "Target table name."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "connectionUri",
+      "table",
+      "operation"
+    ],
+    "properties": {
+      "connectionUri": {
+        "type": "string",
+        "title": "Connection URI",
+        "description": "MySQL connection string.",
+        "format": "password",
+        "x-ui": {
+          "placeholder": "user:pass@tcp(localhost:3306)/dbname",
+          "order": 1,
+          "group": "Connection",
+          "secret": true
+        }
+      },
+      "table": {
+        "type": "string",
+        "title": "Table",
+        "description": "Target table name.",
+        "x-ui": {
+          "placeholder": "events",
+          "order": 2,
+          "group": "Write"
+        }
+      },
+      "operation": {
+        "type": "string",
+        "title": "Operation",
+        "description": "Write operation type.",
+        "enum": [
+          "insert",
+          "upsert",
+          "replace",
+          "update"
+        ],
+        "default": "insert",
+        "x-ui": {
+          "order": 3,
+          "group": "Write"
+        }
+      },
+      "upsertKey": {
+        "type": "string",
+        "title": "Upsert Key",
+        "description": "Unique key column for upsert/update operations.",
+        "x-ui": {
+          "placeholder": "id",
+          "order": 4,
+          "group": "Write"
+        }
+      },
+      "columnMapping": {
+        "type": "object",
+        "title": "Column Mapping",
+        "description": "Packet field → column name overrides.",
+        "x-ui": {
+          "order": 5,
+          "group": "Write"
+        }
+      },
+      "batchSize": {
+        "type": "number",
+        "title": "Batch Size",
+        "description": "Rows to write per transaction.",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 1000,
+        "x-ui": {
+          "order": 6,
+          "group": "Performance"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Table2",
+    "color": "#EF4444",
+    "packetPreview": {
+      "type": "WriteResult",
+      "fields": [
+        {
+          "name": "insertId",
+          "type": "number",
+          "example": "10029"
+        },
+        {
+          "name": "rowsAffected",
+          "type": "number",
+          "example": "1"
+        },
+        {
+          "name": "table",
+          "type": "string",
+          "example": "\"users\""
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,173 @@
+{
+  "id": "flowdsl/postgres-writer",
+  "name": "Postgres Writer",
+  "version": "1.0.0",
+  "summary": "Inserts or upserts packets into a PostgreSQL table.",
+  "description": "# Postgres Writer\n\nWrites packets to PostgreSQL using INSERT, INSERT ... ON CONFLICT (upsert), or UPDATE statements. Supports batch writes, JSONB columns, and custom column mappings from packet fields.\n\n## Use cases\n- Persist pipeline results to PostgreSQL\n- Upsert records for idempotent storage\n- Batch-insert analytics data\n\n## Notes\n- ON CONFLICT requires a unique constraint on the conflict column\n- JSONB columns are auto-detected for object-type fields\n- Batch writes wrapped in a single transaction",
+  "kind": "terminal",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/postgres-writer",
+  "icon": "🐘",
+  "color": "#DC2626",
+  "tags": [
+    "postgres",
+    "postgresql",
+    "database",
+    "sql",
+    "sink",
+    "writer"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/postgres.WriterNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "Data",
+      "description": "Packet containing the row data to write.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — fields mapped to table columns."
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "Result",
+      "description": "Write confirmation with affected row count.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "rowsAffected",
+          "table"
+        ],
+        "properties": {
+          "rowsAffected": {
+            "type": "integer",
+            "description": "Number of rows affected by the operation."
+          },
+          "table": {
+            "type": "string",
+            "description": "Target table name."
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "Write operation duration in milliseconds."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "connectionUri",
+      "table",
+      "operation"
+    ],
+    "properties": {
+      "connectionUri": {
+        "type": "string",
+        "title": "Connection URI",
+        "description": "PostgreSQL connection string.",
+        "format": "password",
+        "x-ui": {
+          "placeholder": "postgres://user:pass@localhost:5432/db",
+          "order": 1,
+          "group": "Connection",
+          "secret": true
+        }
+      },
+      "table": {
+        "type": "string",
+        "title": "Table",
+        "description": "Target table name.",
+        "x-ui": {
+          "placeholder": "events",
+          "order": 2,
+          "group": "Write"
+        }
+      },
+      "operation": {
+        "type": "string",
+        "title": "Operation",
+        "description": "Write operation type.",
+        "enum": [
+          "insert",
+          "upsert",
+          "update"
+        ],
+        "default": "insert",
+        "x-ui": {
+          "order": 3,
+          "group": "Write"
+        }
+      },
+      "conflictColumn": {
+        "type": "string",
+        "title": "Conflict Column",
+        "description": "Unique column for ON CONFLICT (upsert) handling.",
+        "x-ui": {
+          "placeholder": "id",
+          "order": 4,
+          "group": "Write"
+        }
+      },
+      "columnMapping": {
+        "type": "object",
+        "title": "Column Mapping",
+        "description": "Packet field → column name overrides.",
+        "x-ui": {
+          "order": 5,
+          "group": "Write"
+        }
+      },
+      "batchSize": {
+        "type": "number",
+        "title": "Batch Size",
+        "description": "Rows to write per transaction.",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 1000,
+        "x-ui": {
+          "order": 6,
+          "group": "Performance"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Cylinder",
+    "color": "#EF4444",
+    "packetPreview": {
+      "type": "WriteResult",
+      "fields": [
+        {
+          "name": "rowsAffected",
+          "type": "number",
+          "example": "1"
+        },
+        {
+          "name": "table",
+          "type": "string",
+          "example": "\"events\""
+        },
+        {
+          "name": "duration_ms",
+          "type": "number",
+          "example": "4"
+        }
+      ]
+    }
+  }
+}

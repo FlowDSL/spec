@@ -1,0 +1,222 @@
+{
+  "id": "flowdsl/email-sender",
+  "name": "Email Sender",
+  "version": "1.0.0",
+  "summary": "Sends transactional emails via SMTP, SendGrid, or SES.",
+  "description": "# Email Sender\n\nDelivers an email to one or more recipients using the configured provider. Supports HTML and plain-text bodies with {variable} interpolation from the input packet. Tracks delivery status and handles bounces.\n\n## Use cases\n- Send order confirmation emails\n- Deliver auto-reply messages\n- Dispatch password reset links\n\n## Notes\n- Supports SMTP, SendGrid API, and AWS SES\n- {input.field} interpolation in subject and body\n- Reports delivery status as output packet",
+  "kind": "terminal",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/email-sender",
+  "icon": "📤",
+  "color": "#DC2626",
+  "tags": [
+    "email",
+    "notify",
+    "smtp",
+    "sendgrid",
+    "ses",
+    "sink"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/email.SenderNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [
+    {
+      "name": "Event",
+      "description": "Input packet containing data for email template interpolation.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema — fields available for {variable} interpolation."
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "name": "DeliveryStatus",
+      "description": "Delivery confirmation with message ID and status.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "messageId",
+          "to",
+          "status"
+        ],
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "description": "Unique message ID from the mail provider."
+          },
+          "to": {
+            "type": "string",
+            "description": "Recipient email address."
+          },
+          "status": {
+            "type": "string",
+            "description": "Delivery status: delivered, bounced, deferred.",
+            "enum": [
+              "delivered",
+              "bounced",
+              "deferred"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Delivery timestamp."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "provider",
+      "to",
+      "subject",
+      "body"
+    ],
+    "properties": {
+      "provider": {
+        "type": "string",
+        "title": "Email Provider",
+        "description": "Email delivery provider.",
+        "enum": [
+          "smtp",
+          "sendgrid",
+          "ses"
+        ],
+        "default": "smtp",
+        "x-ui": {
+          "order": 1,
+          "group": "Provider"
+        }
+      },
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "SendGrid API key or AWS secret key.",
+        "format": "password",
+        "x-ui": {
+          "order": 2,
+          "group": "Auth",
+          "secret": true
+        }
+      },
+      "smtpHost": {
+        "type": "string",
+        "title": "SMTP Host",
+        "description": "SMTP server hostname.",
+        "x-ui": {
+          "placeholder": "smtp.example.com",
+          "order": 3,
+          "group": "Auth"
+        }
+      },
+      "smtpPort": {
+        "type": "number",
+        "title": "SMTP Port",
+        "description": "SMTP server port.",
+        "default": 587,
+        "x-ui": {
+          "order": 4,
+          "group": "Auth"
+        }
+      },
+      "from": {
+        "type": "string",
+        "title": "From Address",
+        "description": "Sender email address.",
+        "x-ui": {
+          "placeholder": "noreply@example.com",
+          "order": 5,
+          "group": "Message"
+        }
+      },
+      "to": {
+        "type": "string",
+        "title": "To Address",
+        "description": "Recipient — supports {input.email} interpolation.",
+        "x-ui": {
+          "placeholder": "{input.email}",
+          "order": 6,
+          "group": "Message"
+        }
+      },
+      "subject": {
+        "type": "string",
+        "title": "Subject",
+        "description": "Email subject with {variable} interpolation.",
+        "x-ui": {
+          "placeholder": "Your order {input.orderId} is confirmed",
+          "order": 7,
+          "group": "Message"
+        }
+      },
+      "body": {
+        "type": "string",
+        "title": "Body",
+        "description": "Email body (HTML or plain text).",
+        "x-ui": {
+          "placeholder": "<h1>Hello {input.name}</h1>",
+          "order": 8,
+          "group": "Message"
+        }
+      },
+      "contentType": {
+        "type": "string",
+        "title": "Content Type",
+        "description": "Body content type.",
+        "enum": [
+          "html",
+          "plain"
+        ],
+        "default": "html",
+        "x-ui": {
+          "order": 9,
+          "group": "Message"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "MailCheck",
+    "color": "#EF4444",
+    "packetPreview": {
+      "type": "EmailDelivery",
+      "fields": [
+        {
+          "name": "messageId",
+          "type": "string",
+          "example": "\"<abc123@mail.example.com>\""
+        },
+        {
+          "name": "to",
+          "type": "string",
+          "example": "\"alice@example.com\""
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "example": "\"delivered\""
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "example": "\"2024-01-15T10:22:05Z\""
+        }
+      ]
+    }
+  }
+}

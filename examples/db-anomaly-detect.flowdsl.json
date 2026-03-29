@@ -1,0 +1,268 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "DB Anomaly Detection",
+    "version": "1.0.0",
+    "description": "Reads metrics rows from Postgres, analyses them with an LLM for anomalies, and dispatches Slack and SMS alerts for critical findings."
+  },
+  "flows": {
+    "db_anomaly_detect": {
+      "summary": "DB anomaly detection",
+      "description": "Polls Postgres for new metric rows, uses LLM to detect anomalies, routes by severity to Slack and SMS.",
+      "nodes": {
+        "postgres_reader": {
+          "$ref": "#/components/nodes/PostgresReaderNode"
+        },
+        "llm_analyzer": {
+          "$ref": "#/components/nodes/LlmAnalyzerNode"
+        },
+        "severity_router": {
+          "$ref": "#/components/nodes/SeverityRouterNode"
+        },
+        "slack_notifier": {
+          "$ref": "#/components/nodes/SlackNotifierNode"
+        },
+        "sms_alert": {
+          "$ref": "#/components/nodes/SmsAlertNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "postgres_reader",
+          "to": "llm_analyzer",
+          "packet": "#/components/packets/MetricsRow",
+          "description": "Stream metric rows to the LLM for analysis",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis",
+            "batching": {
+              "enabled": true,
+              "batchSize": 50,
+              "maxWaitMs": 200
+            }
+          }
+        },
+        {
+          "from": "llm_analyzer",
+          "to": "severity_router",
+          "packet": "#/components/packets/AnomalyReport",
+          "description": "Pass anomaly report to severity router",
+          "delivery": {
+            "mode": "direct"
+          }
+        },
+        {
+          "from": "severity_router",
+          "to": "slack_notifier",
+          "packet": "#/components/packets/AnomalyReport",
+          "when": "output.detected == true",
+          "description": "Post all detected anomalies to the ops Slack channel",
+          "delivery": {
+            "mode": "ephemeralQueue",
+            "backend": "redis"
+          }
+        },
+        {
+          "from": "severity_router",
+          "to": "sms_alert",
+          "packet": "#/components/packets/AnomalyReport",
+          "when": "output.severity == 'critical'",
+          "description": "Page on-call engineer via SMS for critical anomalies",
+          "delivery": {
+            "mode": "durableQueue",
+            "store": "mongo",
+            "retryPolicy": {
+              "$ref": "#/components/policies/criticalAlertRetry"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "components": {
+    "policies": {
+      "criticalAlertRetry": {
+        "maxAttempts": 10,
+        "initialDelayMs": 500,
+        "backoff": "exponential",
+        "maxDelayMs": 30000,
+        "deadLetterQueue": true
+      }
+    },
+    "events": {
+      "MetricsCollected": {
+        "summary": "Emitted when new metric rows are read from the database",
+        "version": "1.0.0",
+        "entityType": "metric",
+        "action": "collected",
+        "tags": ["monitoring", "metrics"],
+        "payload": {
+          "$ref": "#/components/packets/MetricsRow"
+        }
+      },
+      "AnomalyDetected": {
+        "summary": "Emitted when the LLM detects an anomaly in metric data",
+        "version": "1.0.0",
+        "entityType": "anomaly",
+        "action": "detected",
+        "tags": ["monitoring", "anomaly", "alert"],
+        "payload": {
+          "$ref": "#/components/packets/AnomalyReport"
+        }
+      }
+    },
+    "packets": {
+      "MetricsRow": {
+        "description": "A single metric row read from the database",
+        "properties": {
+          "metric": {
+            "type": "string",
+            "description": "Metric name, e.g. error_rate, latency_p99"
+          },
+          "value": {
+            "type": "number"
+          },
+          "entity_id": {
+            "type": "string",
+            "description": "Service or resource this metric belongs to"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "metric",
+          "value",
+          "entity_id",
+          "recorded_at"
+        ],
+        "type": "object"
+      },
+      "AnomalyReport": {
+        "description": "LLM analysis result for a metric reading",
+        "properties": {
+          "detected": {
+            "type": "boolean",
+            "description": "Whether an anomaly was detected"
+          },
+          "severity": {
+            "type": "string",
+            "description": "none | low | medium | high | critical"
+          },
+          "explanation": {
+            "type": "string",
+            "description": "LLM-generated explanation of the anomaly"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "entity_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detected",
+          "severity",
+          "metric",
+          "entity_id"
+        ],
+        "type": "object"
+      }
+    },
+    "nodes": {
+      "PostgresReaderNode": {
+        "operationId": "read_metrics",
+        "title": "Postgres Reader",
+        "summary": "Poll the metrics table for new rows since the last checkpoint",
+        "kind": "source",
+        "x-ui": {
+          "icon": "Cylinder",
+          "color": "#3B82F6",
+          "position": {
+            "x": 300,
+            "y": 80
+          },
+          "registryId": "postgres-reader"
+        }
+      },
+      "LlmAnalyzerNode": {
+        "operationId": "analyse_for_anomalies",
+        "title": "LLM Analyzer",
+        "summary": "Use an LLM to detect anomalies and rate their severity",
+        "kind": "llm",
+        "execution": {
+          "timeoutMs": 30000,
+          "concurrency": 10,
+          "maxRetries": 2
+        },
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.metric + ':' + input.payload.entity_id + ':' + input.payload.recorded_at",
+          "ttlSeconds": 86400,
+          "store": "mongo"
+        },
+        "x-ui": {
+          "icon": "Bot",
+          "color": "#8B5CF6",
+          "position": {
+            "x": 300,
+            "y": 240
+          },
+          "registryId": "llm-analyzer"
+        }
+      },
+      "SeverityRouterNode": {
+        "operationId": "route_by_severity",
+        "title": "Severity Router",
+        "summary": "Fan out anomaly reports by severity to appropriate alert channels",
+        "kind": "router",
+        "x-ui": {
+          "icon": "Filter",
+          "color": "#F59E0B",
+          "position": {
+            "x": 300,
+            "y": 400
+          },
+          "registryId": "filter-node"
+        }
+      },
+      "SlackNotifierNode": {
+        "operationId": "post_anomaly_slack",
+        "title": "Slack Notifier",
+        "summary": "Post anomaly details to the monitoring Slack channel",
+        "kind": "action",
+        "x-ui": {
+          "icon": "MessageSquare",
+          "color": "#F97316",
+          "position": {
+            "x": 140,
+            "y": 560
+          },
+          "registryId": "slack-notifier"
+        }
+      },
+      "SmsAlertNode": {
+        "operationId": "page_on_call",
+        "title": "SMS Alert",
+        "summary": "Send an SMS page to the on-call engineer for critical anomalies",
+        "kind": "action",
+        "idempotency": {
+          "enabled": true,
+          "keyExpression": "input.payload.metric + ':' + input.payload.entity_id + ':action'",
+          "ttlSeconds": 3600,
+          "store": "redis"
+        },
+        "x-ui": {
+          "icon": "Smartphone",
+          "color": "#F97316",
+          "position": {
+            "x": 460,
+            "y": 560
+          },
+          "registryId": "sms-alert"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "id": "flowdsl/postgres-reader",
+  "name": "Postgres Reader",
+  "version": "1.0.0",
+  "summary": "Queries rows from a PostgreSQL table and emits them as packets.",
+  "description": "# Postgres Reader\n\nExecutes parameterized SQL against PostgreSQL. Supports incremental reads via cursor fields, LISTEN/NOTIFY change streams, and logical replication for CDC (Change Data Capture).\n\n## Use cases\n- Poll for new rows on a schedule\n- React to database changes via LISTEN/NOTIFY\n- Stream changes via logical replication (CDC)\n\n## Notes\n- Supports parameterized queries with $1, $2 placeholders\n- CDC mode requires logical replication slot configuration\n- Each row is emitted as an individual packet",
+  "kind": "source",
+  "language": "go",
+  "author": {
+    "name": "FlowDSL Team",
+    "url": "https://flowdsl.com",
+    "email": "nodes@flowdsl.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-go",
+  "docsUrl": "https://flowdsl.com/nodes/postgres-reader",
+  "icon": "🐘",
+  "color": "#336791",
+  "tags": [
+    "postgres",
+    "postgresql",
+    "database",
+    "sql",
+    "source",
+    "cdc"
+  ],
+  "runtime": {
+    "handler": "github.com/flowdsl/flowdsl-go/nodes/postgres.ReaderNode",
+    "invocation": "inProcess"
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "Row",
+      "description": "Emitted for each row returned by the query or change event.",
+      "schema": {
+        "type": "object",
+        "description": "Dynamic schema matching the query result columns."
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": [
+      "connectionUri",
+      "query"
+    ],
+    "properties": {
+      "connectionUri": {
+        "type": "string",
+        "title": "Connection URI",
+        "description": "PostgreSQL connection string.",
+        "format": "password",
+        "x-ui": {
+          "placeholder": "postgres://user:pass@localhost:5432/db",
+          "order": 1,
+          "group": "Connection",
+          "secret": true
+        }
+      },
+      "query": {
+        "type": "string",
+        "title": "SQL Query",
+        "description": "SQL query — use $1, $2 for parameters.",
+        "x-ui": {
+          "placeholder": "SELECT * FROM events WHERE processed = false",
+          "order": 2,
+          "group": "Query"
+        }
+      },
+      "params": {
+        "type": "array",
+        "title": "Query Parameters",
+        "description": "Query parameter values ($1, $2 ...).",
+        "x-ui": {
+          "order": 3,
+          "group": "Query"
+        }
+      },
+      "mode": {
+        "type": "string",
+        "title": "Read Mode",
+        "description": "Read mode: query (poll), listen (NOTIFY), or cdc (logical replication).",
+        "enum": [
+          "query",
+          "listen",
+          "cdc"
+        ],
+        "default": "query",
+        "x-ui": {
+          "order": 4,
+          "group": "Mode"
+        }
+      },
+      "channel": {
+        "type": "string",
+        "title": "LISTEN Channel",
+        "description": "LISTEN channel name (mode: listen only).",
+        "x-ui": {
+          "placeholder": "new_events",
+          "order": 5,
+          "group": "Mode"
+        }
+      },
+      "batchSize": {
+        "type": "number",
+        "title": "Batch Size",
+        "description": "Rows per fetch.",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 10000,
+        "x-ui": {
+          "order": 6,
+          "group": "Pagination"
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Cylinder",
+    "color": "#3B82F6",
+    "packetPreview": {
+      "type": "PgRow",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "example": "\"a1b2c3d4\""
+        },
+        {
+          "name": "user_id",
+          "type": "number",
+          "example": "2019"
+        },
+        {
+          "name": "payload",
+          "type": "object",
+          "example": "{ score: 0.91 }"
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "example": "\"2024-01-15T09:14:00Z\""
+        }
+      ]
+    }
+  }
+}

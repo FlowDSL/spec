@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/webhook-receiver",
   "icon": "🪝",
   "color": "#F59E0B",
-  "tags": ["webhook", "http", "source", "inbound", "trigger"],
+  "tags": [
+    "webhook",
+    "http",
+    "source",
+    "inbound",
+    "trigger"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.WebhookReceiverNode",
     "invocation": "http"
@@ -28,12 +34,20 @@
       "description": "Emitted for each incoming HTTP request to the registered path.",
       "schema": {
         "type": "object",
-        "required": ["headers", "body", "method", "path", "receivedAt"],
+        "required": [
+          "headers",
+          "body",
+          "method",
+          "path",
+          "receivedAt"
+        ],
         "properties": {
           "headers": {
             "type": "object",
             "description": "Incoming request headers.",
-            "additionalProperties": { "type": "string" }
+            "additionalProperties": {
+              "type": "string"
+            }
           },
           "body": {
             "type": "string",
@@ -42,12 +56,17 @@
           "method": {
             "type": "string",
             "description": "HTTP method of the incoming request.",
-            "examples": ["POST", "GET"]
+            "examples": [
+              "POST",
+              "GET"
+            ]
           },
           "path": {
             "type": "string",
             "description": "The path on which the request was received.",
-            "examples": ["/webhooks/stripe"]
+            "examples": [
+              "/webhooks/stripe"
+            ]
           },
           "receivedAt": {
             "type": "string",
@@ -60,32 +79,83 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["path"],
+    "required": [
+      "path"
+    ],
     "properties": {
       "path": {
         "type": "string",
         "title": "Path",
         "description": "HTTP path to register for this webhook. Must start with '/'.",
-        "x-ui": { "placeholder": "/webhooks/stripe", "order": 1, "group": "Endpoint" }
+        "x-ui": {
+          "placeholder": "/webhooks/stripe",
+          "order": 1,
+          "group": "Endpoint"
+        }
       },
       "secret": {
         "type": "string",
         "title": "Signing Secret",
         "description": "HMAC secret for request signature verification. Leave empty to accept all requests.",
         "format": "password",
-        "x-ui": { "order": 2, "group": "Security", "secret": true }
+        "x-ui": {
+          "order": 2,
+          "group": "Security",
+          "secret": true
+        }
       },
       "method": {
         "type": "string",
         "title": "Accepted Method",
         "description": "HTTP method this endpoint accepts.",
-        "enum": ["POST", "GET", "PUT"],
+        "enum": [
+          "POST",
+          "GET",
+          "PUT"
+        ],
         "default": "POST",
-        "x-ui": { "order": 3, "group": "Endpoint" }
+        "x-ui": {
+          "order": 3,
+          "group": "Endpoint"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Webhook",
+    "color": "#3B82F6",
+    "packetPreview": {
+      "type": "WebhookPayload",
+      "fields": [
+        {
+          "name": "method",
+          "type": "string",
+          "example": "\"POST\""
+        },
+        {
+          "name": "path",
+          "type": "string",
+          "example": "\"/webhooks/orders\""
+        },
+        {
+          "name": "body",
+          "type": "object",
+          "example": "{ event: \"created\", ... }"
+        },
+        {
+          "name": "headers",
+          "type": "object",
+          "example": "{ Content-Type: ... }"
+        },
+        {
+          "name": "timestamp",
+          "type": "string",
+          "example": "\"2024-01-15T10:20:00Z\""
+        }
+      ]
+    }
+  }
 }

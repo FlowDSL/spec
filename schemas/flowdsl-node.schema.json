@@ -42,7 +42,7 @@
     "kind": {
       "type": "string",
       "description": "Functional category of the node. Controls Studio palette grouping and validation rules.",
-      "enum": ["source", "transform", "router", "llm", "action", "checkpoint", "publish", "terminal", "integration"]
+      "enum": ["source", "transform", "router", "llm", "action", "checkpoint", "publish", "terminal", "integration", "subworkflow"]
     },
 
     "language": {

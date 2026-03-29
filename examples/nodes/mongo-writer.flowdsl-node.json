@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/mongo-writer",
   "icon": "💾",
   "color": "#10B981",
-  "tags": ["mongodb", "database", "action", "write", "nosql"],
+  "tags": [
+    "mongodb",
+    "database",
+    "action",
+    "write",
+    "nosql"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.MongoWriterNode",
     "invocation": "inProcess"
@@ -30,37 +36,64 @@
   "outputs": [],
   "settingsSchema": {
     "type": "object",
-    "required": ["connectionId", "collection", "operation"],
+    "required": [
+      "connectionId",
+      "collection",
+      "operation"
+    ],
     "properties": {
       "connectionId": {
         "type": "string",
         "title": "Connection",
         "description": "ID of a saved MongoDB connection in the runtime connection store.",
-        "x-ui": { "placeholder": "my-mongo-connection", "order": 1, "group": "Connection" }
+        "x-ui": {
+          "placeholder": "my-mongo-connection",
+          "order": 1,
+          "group": "Connection"
+        }
       },
       "collection": {
         "type": "string",
         "title": "Collection",
         "description": "Name of the MongoDB collection to write to.",
-        "x-ui": { "placeholder": "results", "order": 2, "group": "Write" }
+        "x-ui": {
+          "placeholder": "results",
+          "order": 2,
+          "group": "Write"
+        }
       },
       "operation": {
         "type": "string",
         "title": "Operation",
         "description": "Write operation to perform.",
-        "enum": ["insert", "update", "upsert"],
+        "enum": [
+          "insert",
+          "update",
+          "upsert"
+        ],
         "default": "insert",
-        "x-ui": { "order": 3, "group": "Write" }
+        "x-ui": {
+          "order": 3,
+          "group": "Write"
+        }
       },
       "filter": {
         "type": "string",
         "title": "Filter",
         "description": "MongoDB query expression used to identify the document for update or upsert. Required when operation is 'update' or 'upsert'.",
-        "x-ui": { "placeholder": "{\"externalId\": \"{{payload.id}}\"}", "order": 4, "group": "Write" }
+        "x-ui": {
+          "placeholder": "{\"externalId\": \"{{payload.id}}\"}",
+          "order": 4,
+          "group": "Write"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "DatabaseBackup",
+    "color": "#F97316"
+  }
 }

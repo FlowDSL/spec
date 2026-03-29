@@ -16,7 +16,13 @@
   "docsUrl": "https://flowdsl.com/nodes/email-fetcher",
   "icon": "📧",
   "color": "#4F46E5",
-  "tags": ["email", "imap", "pop3", "source", "polling"],
+  "tags": [
+    "email",
+    "imap",
+    "pop3",
+    "source",
+    "polling"
+  ],
   "runtime": {
     "handler": "flowdsl.nodes.email.EmailFetcherNode",
     "invocation": "inProcess"
@@ -28,7 +34,13 @@
       "description": "Emitted once for each new email retrieved from the mailbox.",
       "schema": {
         "type": "object",
-        "required": ["messageId", "from", "to", "subject", "receivedAt"],
+        "required": [
+          "messageId",
+          "from",
+          "to",
+          "subject",
+          "receivedAt"
+        ],
         "properties": {
           "messageId": {
             "type": "string",
@@ -40,7 +52,9 @@
           },
           "to": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Recipient addresses."
           },
           "subject": {
@@ -62,48 +76,76 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["host", "username", "password"],
+    "required": [
+      "host",
+      "username",
+      "password"
+    ],
     "properties": {
       "host": {
         "type": "string",
         "title": "IMAP/POP3 Host",
         "description": "Hostname or IP address of the mail server.",
-        "x-ui": { "placeholder": "mail.example.com", "order": 1, "group": "Connection" }
+        "x-ui": {
+          "placeholder": "mail.example.com",
+          "order": 1,
+          "group": "Connection"
+        }
       },
       "port": {
         "type": "number",
         "title": "Port",
         "description": "Server port. Defaults to 993 for IMAP over TLS.",
         "default": 993,
-        "x-ui": { "order": 2, "group": "Connection" }
+        "x-ui": {
+          "order": 2,
+          "group": "Connection"
+        }
       },
       "username": {
         "type": "string",
         "title": "Username",
         "description": "Login username or email address.",
-        "x-ui": { "placeholder": "user@example.com", "order": 3, "group": "Connection" }
+        "x-ui": {
+          "placeholder": "user@example.com",
+          "order": 3,
+          "group": "Connection"
+        }
       },
       "password": {
         "type": "string",
         "title": "Password",
         "description": "Login password. Stored securely in the credential store.",
         "format": "password",
-        "x-ui": { "order": 4, "group": "Connection", "secret": true }
+        "x-ui": {
+          "order": 4,
+          "group": "Connection",
+          "secret": true
+        }
       },
       "protocol": {
         "type": "string",
         "title": "Protocol",
         "description": "Mail protocol to use.",
-        "enum": ["imap", "pop3"],
+        "enum": [
+          "imap",
+          "pop3"
+        ],
         "default": "imap",
-        "x-ui": { "order": 5, "group": "Connection" }
+        "x-ui": {
+          "order": 5,
+          "group": "Connection"
+        }
       },
       "folder": {
         "type": "string",
         "title": "Folder",
         "description": "Mailbox folder to poll. IMAP only.",
         "default": "INBOX",
-        "x-ui": { "order": 6, "group": "Polling" }
+        "x-ui": {
+          "order": 6,
+          "group": "Polling"
+        }
       },
       "pollIntervalSec": {
         "type": "number",
@@ -111,11 +153,48 @@
         "description": "How often to check for new messages.",
         "default": 30,
         "minimum": 5,
-        "x-ui": { "order": 7, "group": "Polling" }
+        "x-ui": {
+          "order": 7,
+          "group": "Polling"
+        }
       }
     }
   },
   "minRuntimeVersion": "1.0.0",
   "published": true,
-  "publishedAt": "2026-01-15T10:00:00Z"
+  "publishedAt": "2026-01-15T10:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Mail",
+    "color": "#3B82F6",
+    "packetPreview": {
+      "type": "EmailMessage",
+      "fields": [
+        {
+          "name": "from",
+          "type": "string",
+          "example": "\"alice@example.com\""
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "example": "\"Order #1029 shipped\""
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "example": "\"Your order has...\""
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "example": "\"2024-01-15T09:00:00Z\""
+        },
+        {
+          "name": "messageId",
+          "type": "string",
+          "example": "\"<abc@mail.example.com>\""
+        }
+      ]
+    }
+  }
 }

@@ -28,6 +28,7 @@
           "from": "webhook_receiver",
           "to": "http_fetcher",
           "packet": "#/components/packets/TriggerEvent",
+          "protocol": "http",
           "description": "Pass resource ID from webhook to HTTP fetcher",
           "delivery": {
             "mode": "direct"
@@ -37,6 +38,7 @@
           "from": "http_fetcher",
           "to": "json_transformer",
           "packet": "#/components/packets/ApiResponse",
+          "protocol": "grpc",
           "description": "Buffer HTTP responses before transformation",
           "delivery": {
             "mode": "ephemeralQueue",
@@ -47,6 +49,7 @@
           "from": "json_transformer",
           "to": "mongo_writer",
           "packet": "#/components/packets/NormalizedRecord",
+          "protocol": "proc",
           "description": "Durably persist normalised records \u2014 must not be lost",
           "delivery": {
             "mode": "checkpoint",
@@ -168,12 +171,17 @@
         "title": "Webhook Receiver",
         "summary": "Receive an HTTP webhook carrying the resource ID to sync",
         "kind": "source",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.WebhookReceiverNode",
+          "supports": ["http", "grpc", "proc"]
+        },
         "x-ui": {
           "icon": "Webhook",
           "color": "#3B82F6",
           "position": {
-            "x": 300,
-            "y": 80
+            "x": 400,
+            "y": 60
           },
           "registryId": "webhook-receiver"
         }
@@ -183,12 +191,17 @@
         "title": "HTTP Fetcher",
         "summary": "Fetch the remote resource from an external REST API",
         "kind": "integration",
+        "runtime": {
+          "language": "nodejs",
+          "handler": "nodes/http-fetcher.HttpFetcherNode",
+          "supports": ["http", "grpc", "proc"]
+        },
         "x-ui": {
           "icon": "Globe",
           "color": "#14B8A6",
           "position": {
-            "x": 300,
-            "y": 240
+            "x": 400,
+            "y": 280
           },
           "registryId": "http-fetcher"
         }
@@ -198,12 +211,17 @@
         "title": "JSON Transformer",
         "summary": "Map API response fields to the internal NormalizedRecord schema",
         "kind": "transform",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.JsonTransformerNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "x-ui": {
           "icon": "Braces",
           "color": "#10B981",
           "position": {
-            "x": 300,
-            "y": 400
+            "x": 400,
+            "y": 500
           },
           "registryId": "json-transformer"
         }
@@ -213,6 +231,11 @@
         "title": "Mongo Writer",
         "summary": "Upsert the normalised record into MongoDB",
         "kind": "action",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.MongoWriterNode",
+          "supports": ["proc", "grpc"]
+        },
         "execution": {
           "timeoutMs": 10000,
           "concurrency": 20,
@@ -228,8 +251,8 @@
           "icon": "DatabaseBackup",
           "color": "#F97316",
           "position": {
-            "x": 300,
-            "y": 560
+            "x": 400,
+            "y": 720
           },
           "registryId": "mongo-writer"
         }

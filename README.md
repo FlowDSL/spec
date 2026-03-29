@@ -117,7 +117,7 @@ flows:
         runtime:
           language: go
           handler: app.nodes.orders.NotifyFulfillmentNode
-          invocation: inProcess
+          invocation: proc
         inputs:
           - name: OrderValid
             message:
@@ -165,7 +165,7 @@ FlowDSL nodes can be implemented in any supported language:
 
 | Language | Invocation modes |
 |---|---|
-| `go` | `inProcess`, `http`, `kafka` |
+| `go` | `proc`, `http`, `kafka` |
 | `python` | `http`, `kafka` |
 | `nodejs` | `http`, `kafka` |
 

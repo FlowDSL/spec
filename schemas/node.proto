@@ -1,0 +1,87 @@
+// FlowDSL Node Service — gRPC Contract v1.0.0
+// Canonical wire protocol for all cross-language FlowDSL node invocation.
+// Go, Python, and Node.js node servers must implement NodeService.
+// HTTP invocation between nodes is intentionally not supported.
+// Generated clients live in: flowdsl-go, flowdsl-py, flowdsl-js
+
+syntax = "proto3";
+
+package flowdsl.node.v1;
+
+option go_package = "github.com/flowdsl/flowdsl-go/pkg/node/v1";
+
+service NodeService {
+
+  // Invoke — standard single-response invocation
+  // Used for all non-streaming nodes
+  rpc Invoke(NodeRequest) returns (NodeResponse);
+
+  // InvokeStream — streaming invocation for LLM and long-running nodes
+  // Sends DELTA chunks during processing, DONE on completion
+  rpc InvokeStream(NodeRequest) returns (stream NodeStreamChunk);
+
+  // Health — runtime polls this for readiness and load balancing
+  rpc Health(HealthRequest) returns (HealthResponse);
+
+  // Manifest — node self-describes its flowdsl-node.json
+  // Runtime calls this on startup for auto-registration
+  // Eliminates need for manual node-registry.yaml entries
+  rpc Manifest(ManifestRequest) returns (ManifestResponse);
+}
+
+message NodeRequest {
+  string flow_id                   = 1;
+  string run_id                    = 2;
+  string node_id                   = 3;
+  string operation_id              = 4;
+  string trace_id                  = 5;
+  bytes  payload                   = 6;  // JSON-encoded input packet
+  string input_name                = 7;  // which input port this arrived on
+  string schema_ref                = 8;  // $ref to input schema
+  map<string, string> settings     = 9;  // node settings from FlowDSL doc
+}
+
+message NodeResponse {
+  string output_name               = 1;  // output port name to route on
+  bytes  payload                   = 2;  // JSON-encoded output packet
+  string schema_ref                = 3;  // $ref to output schema
+  NodeMetrics metrics              = 4;
+  string error                     = 5;  // non-empty = node failed
+  bool   should_retry              = 6;  // hint runtime to retry
+}
+
+message NodeStreamChunk {
+  enum ChunkType {
+    DELTA = 0;  // partial data (LLM token, progress)
+    DONE  = 1;  // stream complete, response is populated
+    ERROR = 2;  // stream failed, error is populated
+  }
+  ChunkType    type      = 1;
+  bytes        delta     = 2;  // partial content for DELTA chunks
+  NodeResponse response  = 3;  // populated on DONE
+  string       error     = 4;  // populated on ERROR
+}
+
+message NodeMetrics {
+  uint32 duration_ms               = 1;
+  uint32 tokens_used               = 2;  // LLM nodes
+  uint32 items_processed           = 3;  // batch nodes
+  map<string, string> custom       = 4;  // node-specific metrics
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool   healthy                   = 1;
+  string version                   = 2;
+  uint32 load                      = 3;  // 0-100, for load balancing
+  repeated string operation_ids    = 4;  // which nodes this server hosts
+}
+
+message ManifestRequest {
+  string operation_id              = 1;  // empty = return all manifests
+}
+
+message ManifestResponse {
+  repeated bytes manifests_json    = 1;  // one flowdsl-node.json per node
+}

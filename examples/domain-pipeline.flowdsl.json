@@ -188,7 +188,7 @@
         "runtime": {
           "language": "go",
           "handler": "app.nodes.domain.RuleFilterNode",
-          "invocation": "inProcess"
+          "supports": ["proc"]
         },
         "inputs": [
           {
@@ -232,7 +232,7 @@
         "runtime": {
           "language": "go",
           "handler": "app.nodes.domain.DnsCheckNode",
-          "invocation": "inProcess"
+          "supports": ["proc"]
         },
         "inputs": [
           {
@@ -270,7 +270,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.domain.ScorePreselectNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {
@@ -314,7 +314,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.domain.LlmAnalysisNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {
@@ -358,7 +358,7 @@
         "runtime": {
           "language": "go",
           "handler": "app.nodes.domain.PublishResultsNode",
-          "invocation": "inProcess"
+          "supports": ["proc"]
         },
         "inputs": [
           {
@@ -389,7 +389,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.email.PriorityRouterNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {
@@ -427,7 +427,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.email.UrgentSmsAlertNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {
@@ -458,7 +458,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.email.LlmSummaryNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {
@@ -496,7 +496,7 @@
         "runtime": {
           "language": "python",
           "handler": "app.nodes.email.TicketCreatorNode",
-          "invocation": "http"
+          "supports": ["http"]
         },
         "inputs": [
           {

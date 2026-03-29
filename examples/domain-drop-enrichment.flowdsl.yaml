@@ -73,7 +73,10 @@ flows:
         runtime:
           language: go
           handler: nodes.dropcatch.DropEnrichmentDispatcherNode
-          invocation: inProcess
+          supports:
+            - proc
+            - kafka
+            - grpc
         inputs:
           - name: DomainDropDetected
             message:
@@ -89,7 +92,7 @@ flows:
           timeoutMs: 1000
           concurrency: 500
         x-ui:
-          position: { x: 300, y: 100 }
+          position: { x: 400, y: 60 }
           color: "#10B981"
           icon: arrow-path
 
@@ -104,7 +107,10 @@ flows:
         runtime:
           language: go
           handler: nodes.whois.ZoneHistoryFetcherNode
-          invocation: inProcess
+          supports:
+            - proc
+            - kafka
+            - grpc
         inputs:
           - name: ZoneHistoryRequested
             message:
@@ -117,7 +123,7 @@ flows:
           timeoutMs: 10000
           concurrency: 200
         x-ui:
-          position: { x: 100, y: 300 }
+          position: { x: 120, y: 300 }
           color: "#14B8A6"
           icon: archive-box
 
@@ -132,7 +138,10 @@ flows:
         runtime:
           language: go
           handler: nodes.analysis.CrawlEnrichmentFetcherNode
-          invocation: inProcess
+          supports:
+            - proc
+            - kafka
+            - grpc
         inputs:
           - name: CrawlEnrichmentRequested
             message:
@@ -145,7 +154,7 @@ flows:
           timeoutMs: 15000
           concurrency: 100
         x-ui:
-          position: { x: 500, y: 300 }
+          position: { x: 680, y: 300 }
           color: "#14B8A6"
           icon: globe-alt
 
@@ -160,7 +169,10 @@ flows:
         runtime:
           language: go
           handler: nodes.analysis.FeatureExtractorNode
-          invocation: inProcess
+          supports:
+            - proc
+            - kafka
+            - grpc
         inputs:
           - name: ZoneHistoryCompleted
             message:
@@ -176,7 +188,7 @@ flows:
           timeoutMs: 5000
           concurrency: 200
         x-ui:
-          position: { x: 300, y: 500 }
+          position: { x: 400, y: 540 }
           color: "#8B5CF6"
           icon: cpu-chip
 
@@ -191,7 +203,10 @@ flows:
         runtime:
           language: go
           handler: nodes.dropcatch.DomainExpiredPublisherNode
-          invocation: inProcess
+          supports:
+            - proc
+            - kafka
+            - grpc
         inputs:
           - name: FeaturesExtracted
             message:
@@ -204,7 +219,7 @@ flows:
           timeoutMs: 2000
           concurrency: 200
         x-ui:
-          position: { x: 300, y: 700 }
+          position: { x: 400, y: 780 }
           color: "#06B6D4"
           icon: arrow-up-circle
 
@@ -214,6 +229,7 @@ flows:
       - from: drop_enrichment_dispatcher
         to:   zone_history_fetcher
         when: "output.name == 'ZoneHistoryRequested'"
+        protocol: kafka
         description: Zone history request to go-whois via Kafka
         delivery:
           mode: eventBus
@@ -226,6 +242,7 @@ flows:
       - from: drop_enrichment_dispatcher
         to:   crawl_enrichment_fetcher
         when: "output.name == 'CrawlEnrichmentRequested'"
+        protocol: kafka
         description: Crawl enrichment request to go-analysis via Kafka
         delivery:
           mode: eventBus
@@ -237,6 +254,7 @@ flows:
       # Zone history result → feature extractor (join leg 1)
       - from: zone_history_fetcher
         to:   feature_extractor
+        protocol: kafka
         description: Zone history results into feature merger
         delivery:
           mode: eventBus
@@ -248,6 +266,7 @@ flows:
       # Crawl enrichment result → feature extractor (join leg 2)
       - from: crawl_enrichment_fetcher
         to:   feature_extractor
+        protocol: kafka
         description: Crawl enrichment results into feature merger
         delivery:
           mode: eventBus
@@ -259,6 +278,7 @@ flows:
       # Features extracted → publish final DomainExpired event
       - from: feature_extractor
         to:   domain_expired_publisher
+        protocol: kafka
         description: Merged feature vector triggers final event publication
         delivery:
           mode: eventBus

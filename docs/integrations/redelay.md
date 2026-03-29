@@ -154,7 +154,8 @@ components:
       runtime:
         language: python
         handler: app.nodes.orders.ValidateOrderNode
-        invocation: http
+        supports:
+          - http
 ```
 
 ---

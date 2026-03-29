@@ -87,6 +87,7 @@ flows:
       - from: rule_filter
         to: dns_check
         when: "output.name == 'RulePassedDomain'"
+        protocol: proc
         delivery:
           mode: direct
           batching:
@@ -97,6 +98,7 @@ flows:
 
       - from: dns_check
         to: score_preselect
+        protocol: grpc
         delivery:
           mode: ephemeralQueue
           backend: redis
@@ -110,6 +112,7 @@ flows:
       - from: score_preselect
         to: llm_analysis
         when: "output.name == 'DomainShortlisted'"
+        protocol: http
         delivery:
           mode: durableQueue
           store: mongo
@@ -118,6 +121,7 @@ flows:
 
       - from: llm_analysis
         to: publish_results
+        protocol: kafka
         delivery:
           mode: eventBus
           eventBus:
@@ -155,6 +159,7 @@ flows:
       - from: priority_router
         to: urgent_sms_alert
         when: "output.name == 'UrgentEmailDetected'"
+        protocol: http
         delivery:
           mode: durableQueue
           store: mongo
@@ -164,6 +169,7 @@ flows:
       - from: priority_router
         to: llm_summary
         when: "output.name == 'EmailForSummarization'"
+        protocol: http
         delivery:
           mode: durableQueue
           store: mongo
@@ -172,6 +178,7 @@ flows:
 
       - from: llm_summary
         to: ticket_creator
+        protocol: http
         delivery:
           mode: durableQueue
           store: mongo
@@ -190,7 +197,10 @@ components:
       runtime:
         language: go
         handler: app.nodes.domain.RuleFilterNode
-        invocation: inProcess
+        supports:
+          - proc
+          - grpc
+          - http
       inputs:
         - name: DomainExpired
           # Reference the FlowDSL event — its payload.$ref delegates to AsyncAPI
@@ -215,7 +225,10 @@ components:
       runtime:
         language: go
         handler: app.nodes.domain.DnsCheckNode
-        invocation: inProcess
+        supports:
+          - proc
+          - grpc
+          - http
       inputs:
         - name: RulePassedDomain
           message:
@@ -235,7 +248,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.domain.ScorePreselectNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: DomainEnriched
           message:
@@ -258,7 +274,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.domain.LlmAnalysisNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: DomainShortlisted
           message:
@@ -283,7 +302,10 @@ components:
       runtime:
         language: go
         handler: app.nodes.domain.PublishResultsNode
-        invocation: inProcess
+        supports:
+          - proc
+          - kafka
+          - grpc
       inputs:
         - name: DomainAnalyzed
           message:
@@ -300,7 +322,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.email.PriorityRouterNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: NewEmailReceived
           # Reference the FlowDSL event — its payload.$ref delegates to AsyncAPI
@@ -324,7 +349,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.email.UrgentSmsAlertNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: UrgentEmailDetected
           message:
@@ -346,7 +374,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.email.LlmSummaryNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: EmailForSummarization
           message:
@@ -371,7 +402,10 @@ components:
       runtime:
         language: python
         handler: app.nodes.email.TicketCreatorNode
-        invocation: http
+        supports:
+          - http
+          - grpc
+          - proc
       inputs:
         - name: EmailSummarized
           message:

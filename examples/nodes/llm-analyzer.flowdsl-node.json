@@ -25,7 +25,11 @@
   ],
   "runtime": {
     "handler": "flowdsl.nodes.llm.LlmAnalyzerNode",
-    "invocation": "inProcess"
+    "supports": ["grpc", "http", "proc"],
+    "grpc": {
+      "port": 50052,
+      "streaming": true
+    }
   },
   "inputs": [
     {

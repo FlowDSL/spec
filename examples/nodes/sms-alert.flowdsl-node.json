@@ -26,7 +26,10 @@
   ],
   "runtime": {
     "handler": "flowdsl.nodes.sms.SmsAlertNode",
-    "invocation": "inProcess"
+    "supports": ["grpc", "http", "proc"],
+    "grpc": {
+      "port": 50052
+    }
   },
   "inputs": [
     {

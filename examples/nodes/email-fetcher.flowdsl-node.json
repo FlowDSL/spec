@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "flowdsl.nodes.email.EmailFetcherNode",
-    "invocation": "inProcess"
+    "supports": ["proc", "grpc", "http"],
+    "grpc": {
+      "port": 50052
+    }
   },
   "inputs": [],
   "outputs": [

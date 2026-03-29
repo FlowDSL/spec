@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes/mysql.ReaderNode",
-    "invocation": "inProcess"
+    "supports": ["proc", "grpc"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [],
   "outputs": [

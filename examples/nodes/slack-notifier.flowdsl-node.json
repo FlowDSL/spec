@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.SlackNotifierNode",
-    "invocation": "inProcess"
+    "supports": ["grpc", "http", "proc"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [
     {

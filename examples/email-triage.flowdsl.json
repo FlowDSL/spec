@@ -31,6 +31,7 @@
           "from": "email_fetcher",
           "to": "llm_classifier",
           "packet": "#/components/packets/IncomingEmail",
+          "protocol": "proc",
           "description": "Send raw email to LLM for classification",
           "delivery": {
             "mode": "direct"
@@ -40,6 +41,7 @@
           "from": "llm_classifier",
           "to": "intent_router",
           "packet": "#/components/packets/ClassificationResult",
+          "protocol": "proc",
           "description": "Pass classification result to router",
           "delivery": {
             "mode": "direct"
@@ -49,6 +51,7 @@
           "from": "intent_router",
           "to": "email_sender",
           "packet": "#/components/packets/EmailReply",
+          "protocol": "grpc",
           "when": "output.category == 'support' || output.category == 'inquiry'",
           "description": "Auto-reply to support and inquiry emails",
           "delivery": {
@@ -63,6 +66,7 @@
           "from": "intent_router",
           "to": "slack_notifier",
           "packet": "#/components/packets/ClassificationResult",
+          "protocol": "grpc",
           "when": "output.priority == 'high'",
           "description": "Alert team on Slack for high-priority emails",
           "delivery": {
@@ -186,12 +190,17 @@
         "title": "Email Fetcher",
         "summary": "Poll the inbox for new unread emails via IMAP",
         "kind": "source",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.email.EmailFetcherNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "x-ui": {
           "icon": "Mail",
           "color": "#3B82F6",
           "position": {
-            "x": 300,
-            "y": 80
+            "x": 400,
+            "y": 60
           },
           "registryId": "email-fetcher"
         }
@@ -201,6 +210,11 @@
         "title": "LLM Classifier",
         "summary": "Classify email intent and priority using an LLM prompt",
         "kind": "llm",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.llm.LlmClassifierNode",
+          "supports": ["grpc", "http", "proc"]
+        },
         "execution": {
           "timeoutMs": 15000,
           "concurrency": 5,
@@ -210,8 +224,8 @@
           "icon": "Bot",
           "color": "#8B5CF6",
           "position": {
-            "x": 300,
-            "y": 240
+            "x": 400,
+            "y": 280
           },
           "registryId": "llm-analyzer"
         }
@@ -221,12 +235,17 @@
         "title": "Intent Router",
         "summary": "Route classified emails to the appropriate handler",
         "kind": "router",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.router.IntentRouterNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "x-ui": {
           "icon": "Filter",
           "color": "#F59E0B",
           "position": {
-            "x": 300,
-            "y": 400
+            "x": 400,
+            "y": 500
           },
           "registryId": "filter-node"
         }
@@ -236,6 +255,11 @@
         "title": "Email Sender",
         "summary": "Send a templated auto-reply acknowledging the email",
         "kind": "terminal",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.email.EmailSenderNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "idempotency": {
           "enabled": true,
           "keyExpression": "input.payload.from + ':' + input.payload.subject",
@@ -246,8 +270,8 @@
           "icon": "MailCheck",
           "color": "#EF4444",
           "position": {
-            "x": 140,
-            "y": 560
+            "x": 160,
+            "y": 720
           },
           "registryId": "email-sender"
         }
@@ -257,12 +281,17 @@
         "title": "Slack Notifier",
         "summary": "Post high-priority email summary to the team Slack channel",
         "kind": "action",
+        "runtime": {
+          "language": "nodejs",
+          "handler": "nodes/slack-notifier.SlackNotifierNode",
+          "supports": ["grpc", "http", "proc"]
+        },
         "x-ui": {
           "icon": "MessageSquare",
           "color": "#F97316",
           "position": {
-            "x": 460,
-            "y": 560
+            "x": 640,
+            "y": 720
           },
           "registryId": "slack-notifier"
         }

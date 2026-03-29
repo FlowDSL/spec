@@ -54,7 +54,7 @@ Served at `repo.flowdsl.com/registry.json`. Lists all published nodes with
 lightweight metadata (id, name, version, summary, kind, language, author, tags).
 
 ### node-registry.schema.json — local service registry
-Maps operationId → runtime handlers within a service. Supports http/grpc/kafka/inProcess
+Maps operationId → runtime handlers within a service. Supports http/grpc/kafka/proc
 invocation modes, deprecation flags, and container images.
 
 ## Key rules when editing this repo
@@ -82,7 +82,7 @@ invocation modes, deprecation flags, and container images.
 - operationId (required) — unique snake_case identifier
 - kind — semantic category (9 values)
 - title, summary, description — documentation
-- runtime (required) — language (go/python/nodejs), handler, invocation (inProcess/http/kafka/grpc), image, version
+- runtime (required) — language (go/python/nodejs), handler, invocation (proc/http/kafka/grpc), image, version
 - inputs / outputs — typed NodePort arrays (name, description, schema)
 - execution — timeoutMs, concurrency, maxRetries
 - idempotency — enabled, keyExpression, ttlSeconds, store (mongo/redis)

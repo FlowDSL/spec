@@ -100,6 +100,12 @@
       "$ref": "#/definitions/NodeRuntime"
     },
 
+    "grpcPort": {
+      "type": "integer",
+      "description": "Convenience shorthand for runtime.grpc.port",
+      "examples": [50051, 50052, 50053]
+    },
+
     "inputs": {
       "type": "array",
       "description": "Named input ports. Each port accepts messages matching the given schema.",
@@ -180,7 +186,7 @@
     "NodeRuntime": {
       "type": "object",
       "description": "Runtime invocation configuration for the node handler.",
-      "required": ["handler", "invocation"],
+      "required": ["handler", "supports"],
       "additionalProperties": false,
       "properties": {
         "handler": {
@@ -192,17 +198,153 @@
             "nodes/email-fetcher.EmailFetcherNode"
           ]
         },
-        "invocation": {
-          "type": "string",
-          "description": "How the FlowDSL runtime invokes this node handler.",
-          "enum": ["inProcess", "http", "kafka", "grpc"]
+        "supports": {
+          "type": "array",
+          "description": "Communication protocols this node supports. A node may support multiple protocols; the actual protocol used is selected per-edge (connection). proc: direct function call (same-language only). grpc: gRPC + Protobuf (recommended for point-to-point). http: HTTP/JSON (simple external APIs). nats: NATS Core pub/sub or RPC (ultra-low latency). kafka: Kafka distributed log (event sourcing, data pipelines). redis: Redis pub/sub (volatile fast broadcasting). zeromq: ZeroMQ brokerless messaging (custom topologies). rabbitmq: RabbitMQ (complex routing, task queues). websocket: WebSockets (persistent bidirectional streams).",
+          "items": {
+            "type": "string",
+            "enum": ["proc", "grpc", "http", "nats", "kafka", "redis", "zeromq", "rabbitmq", "websocket"]
+          },
+          "uniqueItems": true,
+          "default": ["grpc"]
+        },
+        "grpc": {
+          "type": "object",
+          "description": "gRPC configuration. Required when invocation is grpc.",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "description": "Port this node's gRPC server listens on.",
+              "examples": [50051, 50052, 50053]
+            },
+            "streaming": {
+              "type": "boolean",
+              "description": "Whether this node supports InvokeStream RPC. Required for LLM nodes.",
+              "default": false
+            },
+            "maxConcurrentStreams": {
+              "type": "integer",
+              "description": "Maximum concurrent gRPC streams for this node.",
+              "default": 100
+            },
+            "tls": {
+              "type": "boolean",
+              "description": "Whether to use TLS for gRPC connection.",
+              "default": false
+            }
+          },
+          "required": ["port"]
+        },
+        "nats": {
+          "type": "object",
+          "description": "NATS Core configuration. Required when invocation is nats.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "NATS server URL.",
+              "examples": ["nats://localhost:4222"]
+            },
+            "subject": {
+              "type": "string",
+              "description": "NATS subject for this node's messages.",
+              "examples": ["flowdsl.nodes.filter"]
+            },
+            "queueGroup": {
+              "type": "string",
+              "description": "Queue group for load-balanced consumption."
+            }
+          },
+          "required": ["url", "subject"]
+        },
+        "redis": {
+          "type": "object",
+          "description": "Redis Pub/Sub configuration. Required when invocation is redis.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Redis server URL.",
+              "examples": ["redis://localhost:6379"]
+            },
+            "channel": {
+              "type": "string",
+              "description": "Redis channel or pattern for this node.",
+              "examples": ["flowdsl:nodes:filter"]
+            }
+          },
+          "required": ["url", "channel"]
+        },
+        "zeromq": {
+          "type": "object",
+          "description": "ZeroMQ configuration. Required when invocation is zeromq.",
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "type": "string",
+              "description": "ZeroMQ bind or connect address.",
+              "examples": ["tcp://localhost:5555"]
+            },
+            "pattern": {
+              "type": "string",
+              "description": "ZeroMQ socket pattern.",
+              "enum": ["pubsub", "pushpull", "reqrep", "pair"],
+              "default": "reqrep"
+            }
+          },
+          "required": ["address"]
+        },
+        "rabbitmq": {
+          "type": "object",
+          "description": "RabbitMQ configuration. Required when invocation is rabbitmq.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "AMQP connection URL.",
+              "examples": ["amqp://guest:guest@localhost:5672"]
+            },
+            "exchange": {
+              "type": "string",
+              "description": "RabbitMQ exchange name.",
+              "examples": ["flowdsl.nodes"]
+            },
+            "routingKey": {
+              "type": "string",
+              "description": "Routing key for message publishing."
+            },
+            "queue": {
+              "type": "string",
+              "description": "Queue name for consumption."
+            }
+          },
+          "required": ["url"]
+        },
+        "websocket": {
+          "type": "object",
+          "description": "WebSocket configuration. Required when invocation is websocket.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "WebSocket server URL.",
+              "examples": ["ws://localhost:8080/ws"]
+            },
+            "path": {
+              "type": "string",
+              "description": "WebSocket endpoint path.",
+              "examples": ["/ws/nodes/filter"]
+            }
+          },
+          "required": ["url"]
         },
         "image": {
           "type": "string",
           "description": "Optional container image for isolated node execution.",
           "examples": ["ghcr.io/flowdsl/email-fetcher:1.0.0"]
         }
-      }
+      },
     },
 
     "NodePort": {

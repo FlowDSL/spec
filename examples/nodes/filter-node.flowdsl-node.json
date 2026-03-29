@@ -16,10 +16,19 @@
   "docsUrl": "https://flowdsl.com/nodes/filter",
   "icon": "🔍",
   "color": "#F59E0B",
-  "tags": ["filter", "router", "condition", "gate", "branching"],
+  "tags": [
+    "filter",
+    "router",
+    "condition",
+    "gate",
+    "branching"
+  ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.FilterNode",
-    "invocation": "inProcess"
+    "supports": ["proc", "grpc", "http"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [
     {
@@ -39,27 +48,38 @@
   ],
   "settingsSchema": {
     "type": "object",
-    "required": ["condition"],
+    "required": [
+      "condition"
+    ],
     "properties": {
       "condition": {
         "type": "string",
         "title": "Condition",
         "description": "Boolean expression to evaluate. Use 'payload' to reference fields of the incoming object.",
-        "x-ui": { "placeholder": "payload.score > 0.7", "order": 1 }
+        "x-ui": {
+          "placeholder": "payload.score > 0.7",
+          "order": 1
+        }
       },
       "passLabel": {
         "type": "string",
         "title": "Pass Label",
         "description": "Display label for the Passed output port in Studio.",
         "default": "Passed",
-        "x-ui": { "order": 2, "group": "Labels" }
+        "x-ui": {
+          "order": 2,
+          "group": "Labels"
+        }
       },
       "failLabel": {
         "type": "string",
         "title": "Fail Label",
         "description": "Display label for the Failed output port in Studio.",
         "default": "Failed",
-        "x-ui": { "order": 3, "group": "Labels" }
+        "x-ui": {
+          "order": 3,
+          "group": "Labels"
+        }
       }
     }
   },
@@ -72,10 +92,26 @@
     "packetPreview": {
       "type": "FilterResult",
       "fields": [
-        { "name": "matched", "type": "boolean", "example": "true" },
-        { "name": "field", "type": "string", "example": "\"status\"" },
-        { "name": "operator", "type": "string", "example": "\"eq\"" },
-        { "name": "value", "type": "string", "example": "\"active\"" }
+        {
+          "name": "matched",
+          "type": "boolean",
+          "example": "true"
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "example": "\"status\""
+        },
+        {
+          "name": "operator",
+          "type": "string",
+          "example": "\"eq\""
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "example": "\"active\""
+        }
       ]
     }
   }

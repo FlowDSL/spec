@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes.WebhookReceiverNode",
-    "invocation": "http"
+    "supports": ["http", "grpc", "proc"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [],
   "outputs": [

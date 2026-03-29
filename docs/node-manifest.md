@@ -22,7 +22,7 @@ Node manifests use the `.flowdsl-node.json` extension and validate against the `
   "license": "Apache-2.0",
   "runtime": {
     "handler": "flowdsl.nodes.email.EmailFetcherNode",
-    "invocation": "inProcess"
+    "supports": ["proc"]
   },
   "outputs": [ ... ],
   "settingsSchema": { ... },
@@ -51,7 +51,7 @@ Node manifests use the `.flowdsl-node.json` extension and validate against the `
 | `icon` | string | no | Emoji or icon name displayed in Studio. |
 | `color` | string | no | Hex color for the Studio node card, e.g. `#4F46E5`. |
 | `tags` | string[] | no | Search and filter tags for the registry. |
-| `runtime` | object | yes | Runtime invocation configuration. See [Runtime](#runtime). |
+| `runtime` | object | yes | Runtime configuration. See [Runtime](#runtime). |
 | `inputs` | NodePort[] | no | Named input ports. See [Ports](#ports). |
 | `outputs` | NodePort[] | no | Named output ports. See [Ports](#ports). |
 | `settingsSchema` | object | no | JSON Schema object driving the Studio settings form. See [settingsSchema](#settingsschema). |
@@ -105,7 +105,7 @@ The `runtime` object tells the FlowDSL runtime how to locate and invoke the node
 ```json
 "runtime": {
   "handler": "flowdsl.nodes.email.EmailFetcherNode",
-  "invocation": "inProcess",
+  "supports": ["proc", "grpc"],
   "image": "ghcr.io/flowdsl/email-fetcher:1.0.0"
 }
 ```
@@ -113,7 +113,7 @@ The `runtime` object tells the FlowDSL runtime how to locate and invoke the node
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `handler` | string | yes | Fully-qualified handler path. Format depends on language (see below). |
-| `invocation` | enum | yes | How the runtime invokes this node: `inProcess`, `http`, `kafka`, or `grpc`. |
+| `supports` | string[] | yes | Protocols this node can communicate over: `proc`, `grpc`, `http`, `nats`, `kafka`, `redis`, `zeromq`, `rabbitmq`, `websocket`. |
 | `image` | string | no | Container image for isolated node execution. |
 
 **Handler format by language:**

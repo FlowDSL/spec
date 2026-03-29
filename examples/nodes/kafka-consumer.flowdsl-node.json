@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes/kafka.ConsumerNode",
-    "invocation": "inProcess"
+    "supports": ["kafka", "grpc", "proc"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [],
   "outputs": [

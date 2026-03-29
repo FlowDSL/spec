@@ -129,8 +129,8 @@
         "invocation": {
           "type": "string",
           "description": "How the runtime invokes this node handler.",
-          "enum": ["inProcess", "http", "kafka", "grpc"],
-          "default": "inProcess"
+          "enum": ["proc", "http", "kafka", "grpc"],
+          "default": "proc"
         },
         "version": {
           "type": "string",

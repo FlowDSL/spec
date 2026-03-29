@@ -28,6 +28,7 @@
           "from": "kafka_consumer",
           "to": "json_transformer",
           "packet": "#/components/packets/RawEvent",
+          "protocol": "kafka",
           "description": "Stream raw Kafka messages to transformer",
           "delivery": {
             "mode": "direct"
@@ -42,6 +43,7 @@
           "from": "json_transformer",
           "to": "event_filter",
           "packet": "#/components/packets/EnrichedEvent",
+          "protocol": "proc",
           "description": "Buffer enriched events before filtering",
           "delivery": {
             "mode": "ephemeralQueue",
@@ -52,6 +54,7 @@
           "from": "event_filter",
           "to": "kafka_producer",
           "packet": "#/components/packets/EnrichedEvent",
+          "protocol": "kafka",
           "when": "output.type != 'noise' && output.valid == true",
           "description": "Publish only valid, non-noise events downstream",
           "delivery": {
@@ -151,12 +154,17 @@
         "title": "Kafka Consumer",
         "summary": "Subscribe to the raw events Kafka topic and stream messages",
         "kind": "source",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.KafkaConsumerNode",
+          "supports": ["kafka", "grpc", "proc"]
+        },
         "x-ui": {
           "icon": "Radio",
           "color": "#3B82F6",
           "position": {
-            "x": 300,
-            "y": 80
+            "x": 400,
+            "y": 60
           },
           "registryId": "kafka-consumer"
         }
@@ -166,6 +174,11 @@
         "title": "JSON Transformer",
         "summary": "Validate schema, assign event type, and enrich with metadata",
         "kind": "transform",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.JsonTransformerNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "execution": {
           "timeoutMs": 5000,
           "concurrency": 50
@@ -174,8 +187,8 @@
           "icon": "Braces",
           "color": "#10B981",
           "position": {
-            "x": 300,
-            "y": 240
+            "x": 400,
+            "y": 280
           },
           "registryId": "json-transformer"
         }
@@ -185,12 +198,17 @@
         "title": "Event Filter",
         "summary": "Drop noise and invalid events \u2014 pass only clean, typed events",
         "kind": "router",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.EventFilterNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "x-ui": {
           "icon": "Filter",
           "color": "#F59E0B",
           "position": {
-            "x": 300,
-            "y": 400
+            "x": 400,
+            "y": 500
           },
           "registryId": "filter-node"
         }
@@ -200,6 +218,11 @@
         "title": "Kafka Producer",
         "summary": "Publish filtered events to the downstream processed-events topic",
         "kind": "terminal",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.KafkaProducerNode",
+          "supports": ["kafka", "grpc", "proc"]
+        },
         "idempotency": {
           "enabled": true,
           "keyExpression": "input.payload.id",
@@ -210,8 +233,8 @@
           "icon": "RadioTower",
           "color": "#EF4444",
           "position": {
-            "x": 300,
-            "y": 560
+            "x": 400,
+            "y": 720
           },
           "registryId": "kafka-producer"
         }

@@ -28,6 +28,7 @@
           "from": "webhook_receiver",
           "to": "severity_filter",
           "packet": "#/components/packets/WebhookEvent",
+          "protocol": "grpc",
           "description": "Forward raw event to severity filter",
           "delivery": {
             "mode": "direct"
@@ -37,6 +38,7 @@
           "from": "severity_filter",
           "to": "slack_notifier",
           "packet": "#/components/packets/AlertPayload",
+          "protocol": "grpc",
           "when": "output.severity != 'low'",
           "description": "Post medium and high severity alerts to Slack",
           "delivery": {
@@ -48,6 +50,7 @@
           "from": "severity_filter",
           "to": "sms_alert",
           "packet": "#/components/packets/AlertPayload",
+          "protocol": "grpc",
           "when": "output.severity == 'critical'",
           "description": "Critical alerts trigger an SMS to on-call",
           "delivery": {
@@ -132,12 +135,17 @@
         "title": "Webhook Receiver",
         "summary": "Listen for incoming HTTP webhook events from external systems",
         "kind": "source",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.WebhookReceiverNode",
+          "supports": ["http", "grpc", "proc"]
+        },
         "x-ui": {
           "icon": "Webhook",
           "color": "#3B82F6",
           "position": {
-            "x": 300,
-            "y": 80
+            "x": 400,
+            "y": 60
           },
           "registryId": "webhook-receiver"
         }
@@ -147,12 +155,17 @@
         "title": "Severity Filter",
         "summary": "Route events by severity level \u2014 drop low-severity noise",
         "kind": "router",
+        "runtime": {
+          "language": "go",
+          "handler": "github.com/flowdsl/nodes.SeverityFilterNode",
+          "supports": ["proc", "grpc", "http"]
+        },
         "x-ui": {
           "icon": "Filter",
           "color": "#F59E0B",
           "position": {
-            "x": 300,
-            "y": 240
+            "x": 400,
+            "y": 280
           },
           "registryId": "filter-node"
         }
@@ -162,12 +175,17 @@
         "title": "Slack Notifier",
         "summary": "Post alert summary to the ops Slack channel",
         "kind": "action",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.slack.SlackNotifierNode",
+          "supports": ["grpc", "http", "proc"]
+        },
         "x-ui": {
           "icon": "MessageSquare",
           "color": "#F97316",
           "position": {
-            "x": 140,
-            "y": 420
+            "x": 160,
+            "y": 520
           },
           "registryId": "slack-notifier"
         }
@@ -177,6 +195,11 @@
         "title": "SMS Alert",
         "summary": "Send an SMS to the on-call engineer for critical incidents",
         "kind": "action",
+        "runtime": {
+          "language": "python",
+          "handler": "flowdsl.nodes.sms.SmsAlertNode",
+          "supports": ["grpc", "http", "proc"]
+        },
         "execution": {
           "timeoutMs": 10000,
           "concurrency": 5,
@@ -192,8 +215,8 @@
           "icon": "Smartphone",
           "color": "#F97316",
           "position": {
-            "x": 460,
-            "y": 420
+            "x": 640,
+            "y": 520
           },
           "registryId": "sms-alert"
         }

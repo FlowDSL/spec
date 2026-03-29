@@ -25,7 +25,10 @@
   ],
   "runtime": {
     "handler": "github.com/flowdsl/flowdsl-go/nodes/orchestrator.SubworkflowNode",
-    "invocation": "inProcess"
+    "supports": ["proc", "grpc", "http"],
+    "grpc": {
+      "port": 50051
+    }
   },
   "inputs": [
     {

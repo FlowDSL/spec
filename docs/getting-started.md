@@ -87,7 +87,8 @@ components:
       runtime:
         language: python
         handler: app.nodes.ValidateWebhookNode
-        invocation: http
+        supports:
+          - http
       inputs:
         - name: WebhookReceived
           message:
@@ -113,7 +114,8 @@ components:
       runtime:
         language: python
         handler: app.nodes.StoreWebhookNode
-        invocation: http
+        supports:
+          - http
       inputs:
         - name: WebhookValid
           message:
@@ -203,7 +205,8 @@ components:
       runtime:
         language: python
         handler: app.nodes.ValidateWebhookNode
-        invocation: http
+        supports:
+          - http
       inputs:
         - name: WebhookReceived
           message:
@@ -229,7 +232,8 @@ components:
       runtime:
         language: python
         handler: app.nodes.StoreWebhookNode
-        invocation: http
+        supports:
+          - http
       inputs:
         - name: WebhookValid
           message:

@@ -9,6 +9,25 @@ FlowDSL follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- NodeRuntime.invocation: default changed from "proc" to "grpc"
+- "http" invocation retained but not recommended (latency, security surface)
+- Cross-language node invocation now uses gRPC + Protobuf exclusively
+- All example node manifests updated to use `invocation: "grpc"` with gRPC config
+- NodeRuntime.invocation enum expanded to support 9 transport protocols
+
+### Added
+- `schemas/node.proto` — canonical gRPC NodeService contract v1.0.0
+- NodeRuntime.grpc configuration object (port, streaming, maxConcurrentStreams, tls)
+- NodeRuntime.nats configuration object (url, subject, queueGroup)
+- NodeRuntime.redis configuration object (url, channel)
+- NodeRuntime.zeromq configuration object (address, pattern)
+- NodeRuntime.rabbitmq configuration object (url, exchange, routingKey, queue)
+- NodeRuntime.websocket configuration object (url, path)
+- `docs/grpc-protocol.md` — full gRPC protocol documentation
+- Manifest RPC for node self-registration (replaces manual node-registry.yaml)
+- Conditional validation: each transport invocation requires its config object
+
 ### Added
 
 #### Node Manifest format
@@ -68,7 +87,7 @@ FlowDSL follows [Semantic Versioning](https://semver.org/).
 - `operationId` — unique snake_case operation identifier
 - `title`, `summary`, `description` metadata
 - `kind` enum: `source`, `transform`, `router`, `llm`, `action`, `checkpoint`, `publish`, `terminal`, `integration`
-- `runtime` with `language` (`go`, `python`, `nodejs`), `handler`, `invocation` (`inProcess`, `http`, `kafka`, `grpc`), `image`, `version`
+- `runtime` with `language` (`go`, `python`, `nodejs`), `handler`, `invocation` (`proc`, `http`, `kafka`, `grpc`), `image`, `version`
 - `inputs` and `outputs` as typed port arrays with `name` and `message.$ref`
 - `execution` config: `timeoutMs`, `concurrency`, `maxRetries`
 - `idempotency` config: `enabled`, `keyExpression`, `ttlSeconds`, `store`

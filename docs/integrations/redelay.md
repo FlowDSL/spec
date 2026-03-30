@@ -122,7 +122,7 @@ flows:
 
 ## Step 4 — Implement FlowDSL nodes using redelay
 
-The `flowdsl-python` SDK provides a redelay integration module. Your node handlers are Python classes that redelay can invoke:
+The `flowdsl-py` SDK provides a redelay integration module. Your node handlers are Python classes that redelay can invoke:
 
 ```python
 from flowdsl.redelay import FlowNode

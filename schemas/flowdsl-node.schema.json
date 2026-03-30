@@ -65,7 +65,7 @@
       "type": "string",
       "format": "uri",
       "description": "URL of the node's source code repository.",
-      "examples": ["https://github.com/flowdsl/flowdsl-python"]
+      "examples": ["https://github.com/flowdsl/flowdsl-py"]
     },
 
     "docsUrl": {

@@ -246,7 +246,7 @@ The `x-ui` object on a property provides Studio-specific rendering hints. None o
 Follow the SDK guide for your language:
 
 - **Go:** [flowdsl/flowdsl-go — Node SDK](https://github.com/flowdsl/flowdsl-go)
-- **Python:** [flowdsl/flowdsl-python — Node SDK](https://github.com/flowdsl/flowdsl-python)
+- **Python:** [flowdsl/flowdsl-py — Node SDK](https://github.com/flowdsl/flowdsl-py)
 - **Node.js:** [flowdsl/flowdsl-js — Node SDK](https://github.com/flowdsl/flowdsl-js)
 
 ### 2. Write the manifest

@@ -231,9 +231,9 @@ Studio colors, and packetPreview for direct consumption by FlowDSL Studio.
 - flowdsl/website — NuxtJS site at flowdsl.com (uses spec content as source of truth)
 - flowdsl/studio — React Flow visual editor (loads registry + examples from spec)
 - flowdsl/flowdsl-go — Go runtime and node SDK
-- flowdsl/flowdsl-python — Python SDK + redelay integration
-- coded.ai — commercial node marketplace
-- clouded.ai — managed workflow hosting
+- flowdsl/flowdsl-py — Python SDK + redelay integration
+- Node Catalog — community and premium node marketplace (coming soon)
+- Cloud Service — managed workflow hosting (coming soon)
 - redelay — Python/FastAPI framework, FlowDSL integration partner
 
 ## Spec as source of truth
@@ -254,7 +254,7 @@ Extend FlowDSL to support native repositories of ready-to-use workflows
 and nodes. This enables:
 - Community-shared workflow templates (like npm for flows)
 - Subworkflow composition (parent flows delegate to child workflows)
-- coded.ai marketplace backed by the same registry format
+- Node Catalog / marketplace backed by the same registry format
 
 ### Planned schema additions
 

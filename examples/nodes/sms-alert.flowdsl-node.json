@@ -12,7 +12,7 @@
     "email": "nodes@flowdsl.com"
   },
   "license": "Apache-2.0",
-  "repoUrl": "https://github.com/flowdsl/flowdsl-python",
+  "repoUrl": "https://github.com/flowdsl/flowdsl-py",
   "docsUrl": "https://flowdsl.com/nodes/sms-alert",
   "icon": "📱",
   "color": "#EF4444",

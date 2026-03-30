@@ -191,8 +191,8 @@ Point FlowDSL to your AsyncAPI document via `externalDocs.asyncapi`.
 |---|---|
 | **FlowDSL** (this repo) | Open specification + JSON Schema |
 | **[FlowDSL Studio](https://flowdsl.com/studio)** | Visual editor and flow canvas |
-| **[coded.ai](https://coded.ai)** | Node marketplace — buy and sell FlowDSL nodes |
-| **[clouded.ai](https://clouded.ai)** | Managed FlowDSL workflow hosting |
+| **Node Catalog** | Community and premium node marketplace *(coming soon)* |
+| **Cloud Service** | Managed workflow hosting — deploy and run flows *(coming soon)* |
 | **[redelay](https://redelay.com)** | Python/FastAPI framework with native FlowDSL integration |
 
 ---

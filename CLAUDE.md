@@ -28,14 +28,18 @@ examples/
   integrations/
     asyncapi-integration.flowdsl.yaml   AsyncAPI integration pattern
   nodes/                        19 reference node manifests (.flowdsl-node.json)
-docs/
-  concepts.md                   core concepts (flow, node, edge, packet, checkpoint)
-  delivery-modes.md             all 5 delivery modes in detail
-  getting-started.md            first FlowDSL document tutorial
-  node-manifest.md              node manifest format reference
-  integrations/
-    asyncapi.md                 AsyncAPI integration guide
-    redelay.md                  redelay (Python/FastAPI) integration guide
+docs/                           58 doc pages — single source of truth for all documentation
+  index.md                      docs home page
+  concepts.md                   core concepts overview
+  delivery-modes.md             delivery modes overview
+  getting-started.md            getting started overview
+  concepts/                     detailed concept pages (nodes, edges, packets, etc.)
+  tutorials/                    step-by-step walkthroughs
+  guides/                       practical decision guides
+  reference/                    field-by-field spec reference
+  tools/                        Studio, CLI, Go/Python/JS SDK docs
+  community/                    contributing, code of conduct
+  migration/                    migration guides
 ```
 
 ## Schema files
@@ -238,11 +242,11 @@ Studio colors, and packetPreview for direct consumption by FlowDSL Studio.
 
 ## Spec as source of truth
 This repo is the single source of truth for node manifests, example flows,
-and specification docs. Other repos consume spec artefacts:
+and all documentation. Other repos consume spec artefacts:
 - **Studio** loads `spec/examples/nodes/*.flowdsl-node.json` via Vite @spec alias
   and adapts them to RegistryNode format using `specAdapter.ts`.
   Studio examples import from `spec/examples/*.flowdsl.json`.
-- **Website** reads spec docs as a Nuxt content source (prefix `/docs/spec-source/`)
+- **Website** reads `spec/docs/` as a Nuxt content source (prefix `/docs`)
   and serves schemas + examples from public/ via `make sync-spec`.
 - **x-studio extensions** on spec manifests carry Studio-specific visual data:
   `lucideIcon`, `color`, `packetPreview` — no separate Studio registry files needed.

@@ -1,180 +1,81 @@
-# Delivery Modes
-
-Delivery mode is set on every edge and controls how data moves from one node to the next. This is the central design principle of FlowDSL: **edges own transport semantics, nodes do not**.
-
+---
+title: Delivery Modes
+description: Direct, ephemeral, checkpoint, durable, stream — when to use each.
 ---
 
-## Guarantees at a glance
-
-| Mode            | Transport                   | Durability       | Replay          | Latency  | Best for                              |
-|-----------------|-----------------------------|--------------------|-----------------|----------|---------------------------------------|
-| `direct`        | In-process                  | None             | No              | Lowest   | Fast, cheap, deterministic transforms |
-| `ephemeral`     | Redis / NATS / RabbitMQ  | Low (volatile)   | From checkpoint | Low      | Burst smoothing, backpressure         |
-| `checkpoint`    | Mongo / Redis / Postgres    | Stage-level      | From boundary   | Medium   | High-throughput pipelines with replay |
-| `durable`       | Mongo / Postgres            | Packet-level     | From any point  | Medium   | Business-critical steps, LLM stages   |
-| `stream`        | Kafka / Redis / NATS        | Durable stream   | From offset     | Medium   | External integration, fan-out         |
-
----
+The `delivery.mode` field on an edge controls the transport layer and durability guarantee.
 
 ## `direct`
 
-Data is handed off in-process with no persistence, no broker, and no serialization overhead. If the service restarts mid-flight, in-process data is lost — recovery must be defined by a surrounding checkpoint.
+In-process function call. No broker, no serialization. Fastest path.
 
-**When to use:** CPU-bound transforms, rule filtering, cheap routing steps where throughput matters more than recoverability.
+- **Transport:** in-process
+- **Durability:** none
+- **Best for:** fast local transforms within the same process
 
-**Required fields:** none beyond `mode`.
+### Protocol resolution
 
-```yaml
-delivery:
-  mode: direct
-  maxInFlight: 10000
-  batching:
-    enabled: true
-    batchSize: 1000
-    maxWaitMs: 50
-```
+When both nodes share the same language runtime (e.g. Go → Go), `direct` is a
+true in-process call. When the source and target run in different languages
+(e.g. Go → Python), the runtime transparently upgrades the call to gRPC while
+keeping the `direct` delivery semantics (no broker, no durability).
 
----
+| Source lang | Target lang | Actual transport |
+|------------|------------|------------------|
+| Same | Same | In-process function call |
+| Different | Different | gRPC (transparent upgrade) |
+
+See [Communication Protocols](/docs/reference/grpc-protocol) for all supported protocols.
 
 ## `ephemeral`
 
-Data is buffered in Redis, NATS, or RabbitMQ. Messages survive brief service restarts within the TTL of the stream, but are not guaranteed across longer outages. Use `recovery` to point back to a durable boundary.
+Redis / NATS / RabbitMQ queue. Survives brief spikes but not process restarts.
 
-**When to use:** smoothing burst traffic between an inexpensive stage and a slower downstream node; absorbing I/O-bound spikes (e.g. DNS lookups, HTTP calls).
-
-**Required fields:** `backend`
-
-```yaml
-delivery:
-  mode: ephemeral
-  backend: redis
-  batching:
-    enabled: true
-    batchSize: 500
-    maxWaitMs: 100
-  recovery:
-    replayFrom: "checkpoint:ingest"
-    strategy: replayFromCheckpoint
-```
-
----
+- **Transport:** Redis / NATS / RabbitMQ
+- **Durability:** low
+- **Best for:** burst smoothing, rate-limiting
 
 ## `checkpoint`
 
-Data is persisted at this boundary and can be replayed from this point. Downstream edges that use `ephemeral` or `direct` can declare this as their `replayFrom` target. Think of checkpoints as durable breadcrumbs.
+Mongo / Redis / Postgres backed. Progress is saved at each stage, enabling replay from any point.
 
-**When to use:** between logical pipeline stages in high-throughput flows where you want to avoid full replay from the entrypoint on failure.
-
-**Required fields:** `store`
-
-```yaml
-delivery:
-  mode: checkpoint
-  store: mongo   # also: redis, postgres
-```
-
----
+- **Transport:** Mongo / Redis / Postgres
+- **Durability:** stage-level
+- **Best for:** high-throughput pipelines that need replay
 
 ## `durable`
 
-Every packet is persisted to a durable store (MongoDB or Postgres) before delivery is acknowledged. The runtime guarantees at-least-once delivery and can resume exactly from the last unacknowledged packet after a restart.
+Mongo / Postgres backed, packet-level acknowledgement. Every message is persisted before processing begins.
 
-**When to use:** expensive operations (LLM inference, third-party API calls, payment processing) where losing a message has a real cost. Any step where idempotency matters.
-
-**Required fields:** `store`
-
-```yaml
-delivery:
-  mode: durable
-  store: mongo   # also: postgres
-  retryPolicy:
-    maxAttempts: 5
-    initialDelayMs: 2000
-    backoff: exponential
-    maxDelayMs: 120000
-    deadLetterQueue: true
-```
-
----
+- **Transport:** Mongo / Postgres
+- **Durability:** packet-level
+- **Best for:** business-critical steps (payments, order fulfilment)
 
 ## `stream`
 
-The message is published to a durable streaming backend (Kafka, Redis Streams, or NATS JetStream). The downstream node is a consumer of that topic — it may live in a different service or be consumed by external systems entirely.
+Kafka / Redis / NATS durable stream. Supports fan-out to multiple consumers and external integration.
 
-**When to use:** publishing results for external consumers, fan-out to multiple unrelated services, integration with existing Kafka, Redis, or NATS JetStream streams.
-
-**Required fields:** `stream.bus`, `stream.topic`
-
-```yaml
-delivery:
-  mode: stream
-  stream:
-    bus: kafka   # also: redis, nats
-    topic: orders.completed
-    partitionKey: "payload.customerId"
-```
-
----
+- **Transport:** Kafka / Redis / NATS
+- **Durability:** durable stream
+- **Best for:** external integration, fan-out, audit logging
 
 ## Choosing a mode
 
-```
-Is the next node in the same process and loss is acceptable?
-  → direct
+| Scenario | Recommended mode |
+|---|---|
+| In-process transform | `direct` |
+| Queue spikes, low stakes | `ephemeral` |
+| Long pipeline, need replay | `checkpoint` |
+| Money, orders, legal | `durable` |
+| External consumers, fan-out | `stream` |
 
-Do you need burst smoothing without full durability?
-  → ephemeral (with recovery pointing at a checkpoint)
+## Delivery mode vs communication protocol
 
-Is this the boundary after which replay should start?
-  → checkpoint
+Delivery mode and communication protocol are two separate concerns:
 
-Is this message business-critical — cannot be lost on restart?
-  → durable
+- **Delivery mode** (on an edge) defines *how packets flow between nodes* — the durability guarantees and buffering strategy.
+- **Communication protocol** (on an edge) defines *the wire protocol for a specific connection* — gRPC, NATS, Redis, etc. Nodes declare which protocols they support via `runtime.supports`.
 
-Does the result need to go to external systems or fan out?
-  → stream
-```
+They compose independently. An edge using NATS as its protocol can still have `durable` delivery mode — the runtime handles the translation between the edge's delivery transport and the connection's wire protocol.
 
----
-
-## Combining modes in one flow
-
-A single flow can mix all five modes. Each edge is independently configured. This is the key design advantage of FlowDSL: you pay only for the durability you need, on each individual edge.
-
-```yaml
-edges:
-  # cheap rule check — direct, fast, no persistence
-  - from: rule_filter
-    to: dns_check
-    delivery:
-      mode: direct
-
-  # burst smoothing before slower DNS I/O
-  - from: dns_check
-    to: scorer
-    delivery:
-      mode: ephemeral
-      backend: redis
-      recovery:
-        replayFrom: "checkpoint:ingest"
-        strategy: replayFromCheckpoint
-
-  # expensive LLM step — must not be lost
-  - from: scorer
-    to: llm_analysis
-    delivery:
-      mode: durable
-      store: mongo
-      retryPolicy:
-        maxAttempts: 5
-        backoff: exponential
-
-  # publish results externally
-  - from: llm_analysis
-    to: publisher
-    delivery:
-      mode: stream
-      stream:
-        bus: kafka
-        topic: results.analyzed
-```
+See [Communication Protocols](/docs/reference/grpc-protocol) for all 9 supported protocols.

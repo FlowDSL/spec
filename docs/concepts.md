@@ -67,7 +67,7 @@ edges:
     to: reserve_inventory
     when: "output.name == 'OrderValid'"
     delivery:
-      mode: durableQueue
+      mode: durable
       store: mongo
       retryPolicy:
         maxAttempts: 5
@@ -84,7 +84,7 @@ A **DeliveryPolicy** lives on an edge and defines how the runtime hands data fro
 
 ```yaml
 delivery:
-  mode: ephemeralQueue   # one of: direct | ephemeralQueue | checkpoint | durableQueue | eventBus
+  mode: ephemeral   # one of: direct | ephemeral | checkpoint | durable | stream
   backend: redis
   maxInFlight: 5000
   batching:
@@ -139,11 +139,11 @@ Alternatively, use an inline `schema:` for one-off payloads that are only used i
 
 A **Checkpoint** is a durable boundary in a flow — a point from which the runtime can replay processing after a failure. Checkpoints are created by using `checkpoint` delivery mode or by a node with `kind: checkpoint`.
 
-Non-durable edges (e.g. `ephemeralQueue`) can declare a `recovery` block pointing back to the nearest checkpoint:
+Non-durable edges (e.g. `ephemeral`) can declare a `recovery` block pointing back to the nearest checkpoint:
 
 ```yaml
 delivery:
-  mode: ephemeralQueue
+  mode: ephemeral
   backend: redis
   recovery:
     replayFrom: "checkpoint:ingest"
@@ -173,7 +173,7 @@ Reference it on an edge:
 
 ```yaml
 delivery:
-  mode: durableQueue
+  mode: durable
   store: mongo
   retryPolicy:
     $ref: "#/components/policies/standardRetry"

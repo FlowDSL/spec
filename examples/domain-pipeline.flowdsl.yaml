@@ -6,8 +6,8 @@ info:
   description: >
     High-throughput domain expiry pipeline with stateful LLM analysis stage.
     Demonstrates mixed delivery modes: direct for fast transforms,
-    ephemeralQueue for burst smoothing, durableQueue for expensive LLM stages,
-    and eventBus for external publication.
+    ephemeral for burst smoothing, durable for expensive LLM stages,
+    and stream for external publication.
     All schemas are self-contained — no external specification dependencies required.
 
 servers:
@@ -63,7 +63,7 @@ flows:
         protocol: grpc
         description: Redis stream smooths DNS check bursts before scoring
         delivery:
-          mode: ephemeralQueue
+          mode: ephemeral
           backend: redis
           batching:
             enabled: true
@@ -78,7 +78,7 @@ flows:
         protocol: grpc
         description: Durable handoff — LLM analysis is expensive, must not be lost on restart
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/llmExpensiveRetry"
@@ -88,8 +88,8 @@ flows:
         protocol: kafka
         description: Publish analyzed domains to Kafka for external consumers
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: domains.analyzed
             partitionKey: payload.domain
@@ -131,7 +131,7 @@ flows:
         protocol: grpc
         description: Urgent emails trigger durable SMS alert — must not be lost
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/urgentAlertRetry"
@@ -141,7 +141,7 @@ flows:
         when: "output.name == 'EmailForSummarization'"
         protocol: grpc
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/llmExpensiveRetry"
@@ -150,7 +150,7 @@ flows:
         to: ticket_creator
         protocol: grpc
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/urgentAlertRetry"

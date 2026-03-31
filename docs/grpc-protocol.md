@@ -236,7 +236,7 @@ runtime:
 ## Kafka
 
 Durable stream processing with consumer groups, partitioning, and
-exactly-once semantics. Also used by the `eventBus` delivery mode.
+exactly-once semantics. Also used by the `stream` delivery mode.
 
 ```yaml
 runtime:
@@ -345,5 +345,5 @@ These are two separate concerns:
 
 A node declares which protocols it supports via `runtime.supports`. The flow
 author then picks one of the common protocols on each edge. They compose
-independently — an edge using NATS as its protocol can still have `durableQueue`
+independently — an edge using NATS as its protocol can still have `durable`
 delivery mode.

@@ -42,7 +42,7 @@
           "when": "output.severity != 'low'",
           "description": "Post medium and high severity alerts to Slack",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis"
           }
         },
@@ -54,7 +54,7 @@
           "when": "output.severity == 'critical'",
           "description": "Critical alerts trigger an SMS to on-call",
           "delivery": {
-            "mode": "durableQueue",
+            "mode": "durable",
             "store": "mongo",
             "retryPolicy": {
               "$ref": "#/components/policies/alertRetry"

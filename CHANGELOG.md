@@ -99,17 +99,17 @@ FlowDSL follows [Semantic Versioning](https://semver.org/).
 - `description` metadata
 
 #### Delivery policy
-- Five delivery modes: `direct`, `ephemeralQueue`, `checkpoint`, `durableQueue`, `eventBus`
-- `backend` field for `ephemeralQueue` (redis, mongo, kafka, memory)
-- `store` field for `durableQueue` and `checkpoint` (mongo, redis)
+- Five delivery modes: `direct`, `ephemeral`, `checkpoint`, `durable`, `stream`
+- `backend` field for `ephemeral` (redis, nats, memory)
+- `store` field for `durable` and `checkpoint` (mongo, redis, postgres)
 - `batching` config: `enabled`, `batchSize`, `maxWaitMs`
 - `maxInFlight` for flow control
 - `retryPolicy` inline or `$ref`
 - `recovery` config: `replayFrom`, `strategy`
-- `eventBus` config: `bus`, `topic`, `partitionKey`
+- `stream` config: `bus`, `topic`, `partitionKey`
 - `ordering` enum: `none`, `perKey`, `strict`
 - `priority` integer 0–10
-- Conditional validation: `durableQueue` requires `store`, `eventBus` requires `eventBus` config, `ephemeralQueue` requires `backend`
+- Conditional validation: `durable` requires `store`, `stream` requires `stream` config, `ephemeral` requires `backend`
 
 #### Retry policy
 - `maxAttempts`, `initialDelayMs`, `backoff` (`fixed`, `exponential`, `linear`)

@@ -114,7 +114,7 @@ flows:
       - from: validate_order
         to: fulfill_order
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
 ```
 

@@ -145,7 +145,7 @@ flows:
       - from: validate_order
         to: reserve_inventory
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
 ```
 

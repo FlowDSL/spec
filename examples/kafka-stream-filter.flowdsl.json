@@ -46,7 +46,7 @@
           "protocol": "proc",
           "description": "Buffer enriched events before filtering",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis"
           }
         },
@@ -58,8 +58,8 @@
           "when": "output.type != 'noise' && output.valid == true",
           "description": "Publish only valid, non-noise events downstream",
           "delivery": {
-            "mode": "eventBus",
-            "eventBus": {
+            "mode": "stream",
+            "stream": {
               "bus": "kafka",
               "topic": "events.processed",
               "partitionKey": "output.type"

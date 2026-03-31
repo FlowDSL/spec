@@ -154,7 +154,7 @@ flows:
         to: store_webhook
         when: "output.name == 'WebhookValid'"
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
 ```
 
@@ -194,7 +194,7 @@ flows:
         to: store_webhook
         when: "output.name == 'WebhookValid'"
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
 
 components:
@@ -267,7 +267,7 @@ components:
 
 ## Next steps
 
-- Add a `retryPolicy` to the `durableQueue` edge for automatic retries on failure.
+- Add a `retryPolicy` to the `durable` edge for automatic retries on failure.
 - Reference AsyncAPI messages instead of inline schemas — see [integrations/asyncapi.md](./integrations/asyncapi.md).
 - Add more delivery modes to different edges — see [delivery-modes.md](./delivery-modes.md).
 - Validate your document: `make validate-file FILE=your-flow.flowdsl.yaml`

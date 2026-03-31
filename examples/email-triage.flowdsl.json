@@ -55,7 +55,7 @@
           "when": "output.category == 'support' || output.category == 'inquiry'",
           "description": "Auto-reply to support and inquiry emails",
           "delivery": {
-            "mode": "durableQueue",
+            "mode": "durable",
             "store": "mongo",
             "retryPolicy": {
               "$ref": "#/components/policies/emailRetry"
@@ -70,7 +70,7 @@
           "when": "output.priority == 'high'",
           "description": "Alert team on Slack for high-priority emails",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis"
           }
         }

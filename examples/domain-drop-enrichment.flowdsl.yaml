@@ -18,7 +18,7 @@
 #   The AsyncAPI document is then referenceable via externalDocs.asyncapi.
 #
 # Delivery model:
-#   All inter-service communication uses eventBus (Kafka) — these are separate Go
+#   All inter-service communication uses stream (Kafka) — these are separate Go
 #   microservices (go-dropcatch, go-whois, go-analysis) communicating via Kafka topics.
 
 flowdsl: "1.0.0"
@@ -232,8 +232,8 @@ flows:
         protocol: kafka
         description: Zone history request to go-whois via Kafka
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: nameniac.domain.zone_history
             partitionKey: payload.domain
@@ -245,8 +245,8 @@ flows:
         protocol: kafka
         description: Crawl enrichment request to go-analysis via Kafka
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: nameniac.domain.crawl_enrichment
             partitionKey: payload.domain
@@ -257,8 +257,8 @@ flows:
         protocol: kafka
         description: Zone history results into feature merger
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: nameniac.domain.zone_history
             partitionKey: payload.domain
@@ -269,8 +269,8 @@ flows:
         protocol: kafka
         description: Crawl enrichment results into feature merger
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: nameniac.domain.crawl_enrichment
             partitionKey: payload.domain
@@ -281,8 +281,8 @@ flows:
         protocol: kafka
         description: Merged feature vector triggers final event publication
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: nameniac.domain.drop_pipeline
             partitionKey: payload.domain
@@ -464,7 +464,7 @@ components:
 
   policies:
 
-    eventBusRetry:
+    streamRetry:
       maxAttempts: 5
       initialDelayMs: 1000
       backoff: exponential

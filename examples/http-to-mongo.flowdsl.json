@@ -41,7 +41,7 @@
           "protocol": "grpc",
           "description": "Buffer HTTP responses before transformation",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis"
           }
         },

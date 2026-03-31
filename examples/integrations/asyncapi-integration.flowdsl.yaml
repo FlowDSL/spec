@@ -100,7 +100,7 @@ flows:
         to: score_preselect
         protocol: grpc
         delivery:
-          mode: ephemeralQueue
+          mode: ephemeral
           backend: redis
           batching:
             enabled: true
@@ -114,7 +114,7 @@ flows:
         when: "output.name == 'DomainShortlisted'"
         protocol: http
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/llmExpensiveRetry"
@@ -123,8 +123,8 @@ flows:
         to: publish_results
         protocol: kafka
         delivery:
-          mode: eventBus
-          eventBus:
+          mode: stream
+          stream:
             bus: kafka
             topic: domains.analyzed
             partitionKey: payload.domain
@@ -161,7 +161,7 @@ flows:
         when: "output.name == 'UrgentEmailDetected'"
         protocol: http
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/urgentAlertRetry"
@@ -171,7 +171,7 @@ flows:
         when: "output.name == 'EmailForSummarization'"
         protocol: http
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/llmExpensiveRetry"
@@ -180,7 +180,7 @@ flows:
         to: ticket_creator
         protocol: http
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
           retryPolicy:
             $ref: "#/components/policies/urgentAlertRetry"

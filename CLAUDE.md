@@ -128,23 +128,23 @@ Raw reusable JSON Schema shapes. Referenced by events or directly on node ports.
 4. `openapi#/components/schemas/...`  — external OpenAPI import (optional, requires externalDocs.openapi)
 
 ## Delivery modes (core concept)
-| Mode           | Transport     | Durability     | Best for                     |
-|----------------|---------------|----------------|------------------------------|
-| direct         | in-process    | none           | fast local transforms        |
-| ephemeralQueue | Redis/NATS    | low (volatile) | burst smoothing              |
-| checkpoint     | Mongo/Redis   | stage-level    | high-throughput replay       |
-| durableQueue   | MongoDB       | packet-level   | business-critical steps      |
-| eventBus       | Kafka/Redis   | durable stream | external integration, fan-out|
+| Mode           | Transport              | Durability     | Best for                     |
+|----------------|------------------------|----------------|------------------------------|
+| direct         | in-process             | none           | fast local transforms        |
+| ephemeral      | Redis / NATS / RabbitMQ  | low (volatile) | burst smoothing              |
+| checkpoint     | Mongo / Redis / Postgres | stage-level  | high-throughput replay       |
+| durable        | Mongo / Postgres       | packet-level   | business-critical steps      |
+| stream         | Kafka / Redis / NATS     | durable stream | external integration, fan-out|
 
 ## DeliveryPolicy full field set
 - mode (enum, required)
-- backend (for ephemeralQueue — redis, nats, kafka, memory)
-- store (for durableQueue/checkpoint — mongo, redis)
+- backend (for ephemeral — redis, nats, rabbitmq, memory)
+- store (for durable/checkpoint — mongo, redis, postgres)
 - batching — enabled, batchSize, maxWaitMs
 - maxInFlight — flow control (integer)
 - retryPolicy — inline or $ref to components.policies
 - recovery — replayFrom strategy
-- eventBus — bus (kafka/redis/nats), topic, partitionKey
+- stream — bus (kafka/redis/nats), topic, partitionKey
 - ordering — none | perKey | strict (default: none)
 - priority — 0-10 (default: 5)
 
@@ -167,9 +167,9 @@ Raw reusable JSON Schema shapes. Referenced by events or directly on node ports.
 - every flow needs at least one entrypoint
 - node IDs must be unique within a flow
 - edge from/to must reference existing node IDs
-- durableQueue edges must define store
-- eventBus edges must define eventBus.bus and eventBus.topic
-- ephemeralQueue edges must define backend
+- durable edges must define store
+- stream edges must define stream.bus and stream.topic
+- ephemeral edges must define backend
 
 ## Examples inventory
 
@@ -182,7 +182,7 @@ execution constraints, conditional routing, x-ui styling.
 
 ### domain-drop-enrichment.flowdsl.yaml
 Event-driven enrichment pipeline using first-class events (components.events).
-All edges use eventBus (Kafka) with partitionKey. Demonstrates fan-out/join pattern.
+All edges use stream (Kafka) with partitionKey. Demonstrates fan-out/join pattern.
 8 typed events with entityType, action, tags, and examples.
 
 ### integrations/asyncapi-integration.flowdsl.yaml
@@ -192,11 +192,11 @@ Shows externalDocs.asyncapi referencing external contract while keeping node con
 ### webhook-alert.flowdsl.json
 Webhook alert pipeline: 4 nodes (webhook_receiver → severity_filter → slack_notifier / sms_alert).
 Demonstrates retryPolicy ($ref to components.policies), idempotency, execution constraints,
-conditional routing with `when` expressions, and durableQueue delivery.
+conditional routing with `when` expressions, and durable delivery.
 
 ### email-triage.flowdsl.json
 LLM email triage: 5 nodes (email_fetcher → llm_classifier → intent_router → email_sender / slack_notifier).
-Demonstrates LLM kind nodes with execution timeouts, retryPolicy on durableQueue edges,
+Demonstrates LLM kind nodes with execution timeouts, retryPolicy on durable edges,
 events (EmailReceived, EmailClassified), and idempotency on terminal nodes.
 
 ### http-to-mongo.flowdsl.json
@@ -206,7 +206,7 @@ execution + idempotency on writer node.
 
 ### kafka-stream-filter.flowdsl.json
 Kafka stream filter: 4 nodes (kafka_consumer → json_transformer → event_filter → kafka_producer).
-Demonstrates eventBus delivery with partitionKey, batching on edges, events
+Demonstrates stream delivery with partitionKey, batching on edges, events
 (RawEventIngested, EventPublished), execution constraints, and idempotency.
 
 ### db-anomaly-detect.flowdsl.json
@@ -291,7 +291,7 @@ outputs:
 
 # Runtime requirements
 minRuntimeVersion: "1.0.0"
-requiredDeliveryModes: ["durableQueue", "eventBus"]
+requiredDeliveryModes: ["durable", "stream"]
 ```
 
 #### Subworkflow node kind

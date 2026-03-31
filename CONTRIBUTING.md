@@ -96,7 +96,7 @@ types: feat, fix, docs, schema, example, chore
 Examples:
 ```
 feat: add grpc invocation mode to NodeRuntime
-fix: make ephemeralQueue backend field required
+fix: make ephemeral backend field required
 docs: add delivery mode selection guide
 example: add LLM agent flow example
 schema: add ordering field to DeliveryPolicy

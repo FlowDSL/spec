@@ -34,7 +34,7 @@
           "protocol": "grpc",
           "description": "Stream metric rows to the LLM for analysis",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis",
             "batching": {
               "enabled": true,
@@ -61,7 +61,7 @@
           "when": "output.detected == true",
           "description": "Post all detected anomalies to the ops Slack channel",
           "delivery": {
-            "mode": "ephemeralQueue",
+            "mode": "ephemeral",
             "backend": "redis"
           }
         },
@@ -73,7 +73,7 @@
           "when": "output.severity == 'critical'",
           "description": "Page on-call engineer via SMS for critical anomalies",
           "delivery": {
-            "mode": "durableQueue",
+            "mode": "durable",
             "store": "mongo",
             "retryPolicy": {
               "$ref": "#/components/policies/criticalAlertRetry"

@@ -676,18 +676,18 @@
         "mode": {
           "type": "string",
           "description": "Delivery mode for this edge. Determines durability, replay, and latency guarantees.",
-          "enum": ["direct", "ephemeralQueue", "checkpoint", "durableQueue", "eventBus"]
+          "enum": ["direct", "ephemeral", "checkpoint", "durable", "stream"]
         },
         "backend": {
           "type": "string",
-          "description": "Concrete backend for ephemeralQueue or checkpoint modes.",
-          "enum": ["redis", "mongo", "kafka", "memory"],
+          "description": "Concrete backend for ephemeral mode.",
+          "enum": ["redis", "nats", "rabbitmq", "memory"],
           "examples": ["redis"]
         },
         "store": {
           "type": "string",
-          "description": "Storage backend for durableQueue and checkpoint modes.",
-          "enum": ["mongo", "redis"],
+          "description": "Storage backend for durable and checkpoint modes.",
+          "enum": ["mongo", "redis", "postgres"],
           "examples": ["mongo"]
         },
         "batching": {
@@ -708,8 +708,8 @@
         "recovery": {
           "$ref": "#/definitions/RecoveryConfig"
         },
-        "eventBus": {
-          "$ref": "#/definitions/EventBusConfig"
+        "stream": {
+          "$ref": "#/definitions/StreamConfig"
         },
         "ordering": {
           "type": "string",
@@ -728,15 +728,15 @@
 
       "allOf": [
         {
-          "if": { "properties": { "mode": { "const": "eventBus" } } },
-          "then": { "required": ["eventBus"] }
+          "if": { "properties": { "mode": { "const": "stream" } } },
+          "then": { "required": ["stream"] }
         },
         {
-          "if": { "properties": { "mode": { "const": "durableQueue" } } },
+          "if": { "properties": { "mode": { "const": "durable" } } },
           "then": { "required": ["store"] }
         },
         {
-          "if": { "properties": { "mode": { "const": "ephemeralQueue" } } },
+          "if": { "properties": { "mode": { "const": "ephemeral" } } },
           "then": { "required": ["backend"] }
         }
       ]
@@ -821,15 +821,15 @@
       }
     },
 
-    "EventBusConfig": {
+    "StreamConfig": {
       "type": "object",
-      "description": "Configuration for eventBus delivery mode — publishes to an external event broker.",
+      "description": "Configuration for stream delivery mode — publishes to a durable streaming backend.",
       "required": ["bus", "topic"],
       "additionalProperties": false,
       "properties": {
         "bus": {
           "type": "string",
-          "description": "The event bus backend to publish to.",
+          "description": "The streaming backend to publish to.",
           "enum": ["kafka", "redis", "nats"],
           "examples": ["kafka"]
         },

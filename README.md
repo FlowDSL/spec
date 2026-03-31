@@ -29,7 +29,7 @@ edges:
     to: llm_analysis
     when: "output.name == 'DomainShortlisted'"
     delivery:
-      mode: durableQueue    # expensive stage — must survive restart
+      mode: durable    # expensive stage — must survive restart
       store: mongo
       retryPolicy:
         $ref: "#/components/policies/llmExpensiveRetry"
@@ -37,8 +37,8 @@ edges:
   - from: llm_analysis
     to: publish_results
     delivery:
-      mode: eventBus        # publish to external systems via Kafka
-      eventBus:
+      mode: stream        # publish to external systems via Kafka
+      stream:
         bus: kafka
         topic: domains.analyzed
 ```
@@ -50,10 +50,10 @@ edges:
 | Mode | Durability | Replay | Restart-safe | Best for |
 |---|---|---|---|---|
 | `direct` | none | no | no | fast local transforms |
-| `ephemeralQueue` | low | limited | limited | burst smoothing (Redis) |
+| `ephemeral` | low | limited | limited | burst smoothing (Redis) |
 | `checkpoint` | stage-level | yes | yes from boundary | high-throughput stages |
-| `durableQueue` | packet-level | yes | yes | business-critical transitions |
-| `eventBus` | durable stream | yes | yes | external integration, fan-out |
+| `durable` | packet-level | yes | yes | business-critical transitions |
+| `stream` | durable stream | yes | yes | external integration, fan-out |
 
 ---
 
@@ -128,7 +128,7 @@ flows:
         to: notify_fulfillment
         when: "output.name == 'OrderValid'"
         delivery:
-          mode: durableQueue
+          mode: durable
           store: mongo
 
 components:
@@ -152,10 +152,10 @@ examples/
 ```
 
 ### [Domain Drop Catch Pipeline](examples/domain-pipeline.flowdsl.yaml)
-High-throughput pipeline processing 1M+ expiring domains daily. Demonstrates `direct`, `ephemeralQueue`, `durableQueue`, and `eventBus` delivery modes in a single flow.
+High-throughput pipeline processing 1M+ expiring domains daily. Demonstrates `direct`, `ephemeral`, `durable`, and `stream` delivery modes in a single flow.
 
 ### [Work Email Handler](examples/domain-pipeline.flowdsl.yaml)
-Stateful workflow for email processing with priority routing, SMS alerts, and LLM summarization. All edges use `durableQueue` for full restart safety.
+Stateful workflow for email processing with priority routing, SMS alerts, and LLM summarization. All edges use `durable` for full restart safety.
 
 ---
 

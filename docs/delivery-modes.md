@@ -6,13 +6,13 @@ Delivery mode is set on every edge and controls how data moves from one node to 
 
 ## Guarantees at a glance
 
-| Mode            | Transport        | Durability       | Replay       | Latency  | Best for                              |
-|-----------------|------------------|------------------|--------------|----------|---------------------------------------|
-| `direct`        | In-process       | None             | No           | Lowest   | Fast, cheap, deterministic transforms |
-| `ephemeralQueue`| Redis / NATS     | Low (volatile)   | From checkpoint | Low   | Burst smoothing, backpressure         |
-| `checkpoint`    | Mongo / Redis    | Stage-level      | From boundary | Medium  | High-throughput pipelines with replay |
-| `durableQueue`  | MongoDB          | Packet-level     | From any point | Medium | Business-critical steps, LLM stages  |
-| `eventBus`      | Kafka / Redis    | Durable stream   | From offset  | Medium   | External integration, fan-out         |
+| Mode            | Transport                   | Durability       | Replay          | Latency  | Best for                              |
+|-----------------|-----------------------------|--------------------|-----------------|----------|---------------------------------------|
+| `direct`        | In-process                  | None             | No              | Lowest   | Fast, cheap, deterministic transforms |
+| `ephemeral`     | Redis / NATS / RabbitMQ  | Low (volatile)   | From checkpoint | Low      | Burst smoothing, backpressure         |
+| `checkpoint`    | Mongo / Redis / Postgres    | Stage-level      | From boundary   | Medium   | High-throughput pipelines with replay |
+| `durable`       | Mongo / Postgres            | Packet-level     | From any point  | Medium   | Business-critical steps, LLM stages   |
+| `stream`        | Kafka / Redis / NATS        | Durable stream   | From offset     | Medium   | External integration, fan-out         |
 
 ---
 
@@ -36,9 +36,9 @@ delivery:
 
 ---
 
-## `ephemeralQueue`
+## `ephemeral`
 
-Data is buffered in Redis or NATS. Messages survive brief service restarts within the TTL of the stream, but are not guaranteed across longer outages. Use `recovery` to point back to a durable boundary.
+Data is buffered in Redis, NATS, or RabbitMQ. Messages survive brief service restarts within the TTL of the stream, but are not guaranteed across longer outages. Use `recovery` to point back to a durable boundary.
 
 **When to use:** smoothing burst traffic between an inexpensive stage and a slower downstream node; absorbing I/O-bound spikes (e.g. DNS lookups, HTTP calls).
 
@@ -46,7 +46,7 @@ Data is buffered in Redis or NATS. Messages survive brief service restarts withi
 
 ```yaml
 delivery:
-  mode: ephemeralQueue
+  mode: ephemeral
   backend: redis
   batching:
     enabled: true
@@ -61,23 +61,23 @@ delivery:
 
 ## `checkpoint`
 
-Data is persisted at this boundary and can be replayed from this point. Downstream edges that use `ephemeralQueue` or `direct` can declare this as their `replayFrom` target. Think of checkpoints as durable breadcrumbs.
+Data is persisted at this boundary and can be replayed from this point. Downstream edges that use `ephemeral` or `direct` can declare this as their `replayFrom` target. Think of checkpoints as durable breadcrumbs.
 
 **When to use:** between logical pipeline stages in high-throughput flows where you want to avoid full replay from the entrypoint on failure.
 
-**Required fields:** `store` (or `backend` depending on implementation)
+**Required fields:** `store`
 
 ```yaml
 delivery:
   mode: checkpoint
-  store: mongo
+  store: mongo   # also: redis, postgres
 ```
 
 ---
 
-## `durableQueue`
+## `durable`
 
-Every packet is persisted to MongoDB before delivery is acknowledged. The runtime guarantees at-least-once delivery and can resume exactly from the last unacknowledged packet after a restart.
+Every packet is persisted to a durable store (MongoDB or Postgres) before delivery is acknowledged. The runtime guarantees at-least-once delivery and can resume exactly from the last unacknowledged packet after a restart.
 
 **When to use:** expensive operations (LLM inference, third-party API calls, payment processing) where losing a message has a real cost. Any step where idempotency matters.
 
@@ -85,8 +85,8 @@ Every packet is persisted to MongoDB before delivery is acknowledged. The runtim
 
 ```yaml
 delivery:
-  mode: durableQueue
-  store: mongo
+  mode: durable
+  store: mongo   # also: postgres
   retryPolicy:
     maxAttempts: 5
     initialDelayMs: 2000
@@ -97,19 +97,19 @@ delivery:
 
 ---
 
-## `eventBus`
+## `stream`
 
-The message is published to an external broker (Kafka, Redis pub/sub). The downstream node is a consumer of that topic — it may live in a different service or be consumed by external systems entirely.
+The message is published to a durable streaming backend (Kafka, Redis Streams, or NATS JetStream). The downstream node is a consumer of that topic — it may live in a different service or be consumed by external systems entirely.
 
-**When to use:** publishing results for external consumers, fan-out to multiple unrelated services, integration with existing Kafka or Redis streams.
+**When to use:** publishing results for external consumers, fan-out to multiple unrelated services, integration with existing Kafka, Redis, or NATS JetStream streams.
 
-**Required fields:** `eventBus.bus`, `eventBus.topic`
+**Required fields:** `stream.bus`, `stream.topic`
 
 ```yaml
 delivery:
-  mode: eventBus
-  eventBus:
-    bus: kafka
+  mode: stream
+  stream:
+    bus: kafka   # also: redis, nats
     topic: orders.completed
     partitionKey: "payload.customerId"
 ```
@@ -123,16 +123,16 @@ Is the next node in the same process and loss is acceptable?
   → direct
 
 Do you need burst smoothing without full durability?
-  → ephemeralQueue (with recovery pointing at a checkpoint)
+  → ephemeral (with recovery pointing at a checkpoint)
 
 Is this the boundary after which replay should start?
   → checkpoint
 
 Is this message business-critical — cannot be lost on restart?
-  → durableQueue
+  → durable
 
 Does the result need to go to external systems or fan out?
-  → eventBus
+  → stream
 ```
 
 ---
@@ -153,7 +153,7 @@ edges:
   - from: dns_check
     to: scorer
     delivery:
-      mode: ephemeralQueue
+      mode: ephemeral
       backend: redis
       recovery:
         replayFrom: "checkpoint:ingest"
@@ -163,7 +163,7 @@ edges:
   - from: scorer
     to: llm_analysis
     delivery:
-      mode: durableQueue
+      mode: durable
       store: mongo
       retryPolicy:
         maxAttempts: 5
@@ -173,8 +173,8 @@ edges:
   - from: llm_analysis
     to: publisher
     delivery:
-      mode: eventBus
-      eventBus:
+      mode: stream
+      stream:
         bus: kafka
         topic: results.analyzed
 ```

@@ -95,7 +95,7 @@ When the CLI validates your flow, it reports the schema version mismatch if any:
 
 - Open a [GitHub discussion](https://github.com/flowdsl/spec/discussions) for migration questions
 - Check the [spec changelog](https://github.com/flowdsl/spec/blob/main/CHANGELOG.md) for detailed diff between versions
-- [Community Discord](https://discord.gg/flowdsl) — `#migration` channel
+- [Community Discord](https://discord.gg/MUjXSwGbUY) — `#migration` channel
 
 ## Next steps
 

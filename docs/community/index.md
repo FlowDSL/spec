@@ -14,17 +14,16 @@ Open an issue on the relevant repository:
 
 | Repository | Use for |
 |------------|---------|
-| [flowdsl/spec](https://github.com/flowdsl/spec/issues) | Spec bugs, schema questions, new field proposals |
+| [flowdsl/spec](https://github.com/flowdsl/spec/issues) | Spec bugs, schema questions, docs, new field proposals |
 | [flowdsl/studio](https://github.com/flowdsl/studio/issues) | Visual editor bugs and feature requests |
 | [flowdsl/flowdsl-go](https://github.com/flowdsl/flowdsl-go/issues) | Go runtime and SDK issues |
 | [flowdsl/flowdsl-py](https://github.com/flowdsl/flowdsl-py/issues) | Python SDK issues |
 | [flowdsl/flowdsl-js](https://github.com/flowdsl/flowdsl-js/issues) | JavaScript/TypeScript SDK issues |
-| [flowdsl/website](https://github.com/flowdsl/website/issues) | Documentation errors, typos |
 
 ### Ask a question
 
 - **GitHub Discussions** — [github.com/flowdsl/spec/discussions](https://github.com/flowdsl/spec/discussions) — the primary place for open-ended questions and design discussions
-- **Discord** — [discord.gg/flowdsl](https://discord.gg/flowdsl) — real-time chat with maintainers and community members
+- **Discord** — [discord.gg/flowdsl](https://discord.gg/MUjXSwGbUY) — real-time chat with maintainers and community members
 
 ### Propose a spec change
 

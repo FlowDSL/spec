@@ -32,5 +32,8 @@ Full guide to the AsyncAPI ↔ FlowDSL integration. Schema referencing, runtime 
 ### [Redelay Integration](/docs/guides/redelay-integration)
 How to use [redelay](https://redelay.com) (Python/FastAPI event framework) as a FlowDSL backend, including automatic AsyncAPI generation from Pydantic events.
 
+### [Schema Source of Truth](/docs/guides/schema-source-of-truth)
+How to assign each port schema to exactly one authoritative source — OpenAPI, AsyncAPI, or native packets — when your modules already expose both an HTTP API and an event bus. Includes a decision tree and Redelay Go examples.
+
 ### [Node Development](/docs/guides/node-development)
 How to develop, test, version, and publish FlowDSL nodes. Covers the manifest format, local development workflow, and the node registry.

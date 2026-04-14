@@ -1,6 +1,6 @@
 ---
 title: Reference AsyncAPI Messages in FlowDSL
-description: Use existing AsyncAPI event contracts as packet types in your FlowDSL flows without duplicating schemas.
+description: Use existing AsyncAPI event contracts as message types in your FlowDSL flows without duplicating schemas.
 weight: 204
 ---
 
@@ -11,11 +11,232 @@ FlowDSL is self-contained, but if your team already has AsyncAPI documents descr
 If your team maintains an AsyncAPI document for your event bus, it is the authoritative schema for your events. Duplicating those schemas in FlowDSL creates drift — two definitions that can fall out of sync. Referencing them directly means:
 
 - One source of truth
-- FlowDSL validates packets against the actual AsyncAPI-defined schema
+- FlowDSL validates messages against the actual AsyncAPI-defined schema
 - Changes to the AsyncAPI schema automatically apply to the FlowDSL flow
-- Studio can show the resolved schema in the NodeContractCard
+- Studio can show the resolved schema in the inspector
 
 ## Your AsyncAPI document
+
+```yaml
+# events.asyncapi.yaml
+asyncapi: "2.6.0"
+info:
+  title: Support Events
+  version: "1.0.0"
+
+channels:
+  support/email-received:
+    subscribe:
+      operationId: email_received
+      message:
+        $ref: "#/components/messages/EmailReceived"
+
+components:
+  messages:
+    EmailReceived:
+      name: EmailReceived
+      payload:
+        type: object
+        properties:
+          messageId:
+            type: string
+          from:
+            type: string
+            format: email
+          subject:
+            type: string
+          body:
+            type: string
+          receivedAt:
+            type: string
+            format: date-time
+        required: [messageId, from, subject, body, receivedAt]
+
+    TicketCreated:
+      name: TicketCreated
+      payload:
+        type: object
+        properties:
+          ticketId:
+            type: string
+          emailMessageId:
+            type: string
+          priority:
+            type: string
+            enum: [urgent, normal, low]
+          status:
+            type: string
+            enum: [open, pending, resolved]
+        required: [ticketId, emailMessageId, priority, status]
+```
+
+## Reference it in FlowDSL
+
+Declare the AsyncAPI document under `externalDocs`, then wrap the message ref in a `components.events` definition to keep node ports stable:
+
+```yaml
+flowdsl: "1.0.0"
+info:
+  title: Email Triage
+  version: "1.0.0"
+
+# Declare the AsyncAPI document location
+externalDocs:
+  asyncapi: "./events.asyncapi.yaml"
+  description: AsyncAPI event contracts for the support system
+
+flows:
+  email_triage:
+    entrypoints:
+      - message:
+          $ref: "#/components/events/EmailReceived"
+
+    nodes:
+      email_receiver:
+        $ref: "#/components/nodes/EmailReceiverNode"
+      classify_email:
+        $ref: "#/components/nodes/ClassifyEmailNode"
+      create_ticket:
+        $ref: "#/components/nodes/CreateTicketNode"
+
+    edges:
+      - from: email_receiver
+        to: classify_email
+        delivery:
+          mode: durable
+          store: mongo
+
+      - from: classify_email
+        to: create_ticket
+        delivery:
+          mode: durable
+          store: mongo
+
+components:
+  events:
+    # Boundary events — payload schemas owned by AsyncAPI
+    EmailReceived:
+      name: EmailReceived
+      version: "1.0.0"
+      payload:
+        $ref: "asyncapi#/components/messages/EmailReceived"
+
+    TicketCreated:
+      name: TicketCreated
+      version: "1.0.0"
+      payload:
+        $ref: "asyncapi#/components/messages/TicketCreated"
+
+  packets:
+    # Internal packet — not in AsyncAPI
+    AnalysisResult:
+      type: object
+      properties:
+        email:
+          type: object
+        classification:
+          type: string
+          enum: [urgent, normal, spam]
+        confidence:
+          type: number
+      required: [email, classification, confidence]
+
+  nodes:
+    EmailReceiverNode:
+      operationId: receive_email
+      kind: source
+      runtime:
+        language: go
+        handler: nodes.EmailReceiverNode
+      outputs:
+        - name: EmailReceived
+          message:
+            $ref: "#/components/events/EmailReceived"
+
+    ClassifyEmailNode:
+      operationId: classify_email
+      kind: llm
+      runtime:
+        language: python
+        handler: nodes.ClassifyEmailNode
+      inputs:
+        - message:
+            $ref: "#/components/events/EmailReceived"
+      outputs:
+        - name: Classified
+          message:
+            schema:
+              $ref: "#/components/packets/AnalysisResult"
+
+    CreateTicketNode:
+      operationId: create_ticket
+      kind: action
+      runtime:
+        language: go
+        handler: nodes.CreateTicketNode
+      inputs:
+        - message:
+            schema:
+              $ref: "#/components/packets/AnalysisResult"
+      outputs:
+        - name: TicketCreated
+          message:
+            $ref: "#/components/events/TicketCreated"
+```
+
+## The reference syntax
+
+| Syntax | Resolves to |
+|--------|------------|
+| `asyncapi#/components/messages/EmailReceived` | The payload schema of `EmailReceived` in the linked AsyncAPI doc (default doc) |
+| `asyncapi:support#/components/messages/EmailReceived` | Same, from a named doc declared as `support:` in `externalDocs.asyncapi` |
+| `#/components/events/EmailReceived` | A FlowDSL event defined in `components.events` |
+| `#/components/packets/AnalysisResult` | A packet schema defined in `components.packets` |
+
+The `externalDocs.asyncapi` ref lives inside the event's `payload.$ref`, keeping all node ports using stable FlowDSL-local `#/components/events/...` paths.
+
+## How the runtime resolves references
+
+1. At startup, the runtime reads `externalDocs.asyncapi` to locate the AsyncAPI document(s).
+2. For each `asyncapi#/...` payload ref, the runtime resolves the JSON Pointer in the loaded doc.
+3. The resolved JSON Schema is used for message validation at runtime.
+4. If a referenced document is unavailable, the runtime fails to start.
+
+## Multiple AsyncAPI documents
+
+If your flows span multiple services, you can reference several AsyncAPI documents by name:
+
+```yaml
+externalDocs:
+  asyncapi:
+    default: "./events.asyncapi.yaml"
+    notifications: "https://notify.example.com/asyncapi.json"
+```
+
+Then use `asyncapi:notifications#/...` in event payload refs:
+
+```yaml
+components:
+  events:
+    EmailSent:
+      payload:
+        $ref: "asyncapi:notifications#/components/messages/EmailSent"
+```
+
+## Validation
+
+Both documents validate independently:
+
+```bash
+# Validate the AsyncAPI document
+asyncapi validate events.asyncapi.yaml
+
+# Validate the FlowDSL document
+flowdsl validate email-triage.flowdsl.yaml
+```
+
+The FlowDSL validator also resolves and validates all `asyncapi#/...` references — it will fail if the referenced path doesn't exist in the AsyncAPI document.
+
 
 ```yaml
 # events.asyncapi.yaml

@@ -1,0 +1,157 @@
+{
+  "id": "redelay/event-source",
+  "name": "Redelay Event Source",
+  "version": "1.0.0",
+  "summary": "Configurable source node that subscribes to any event on the Redelay event bus. One node, every event — pick the topic via settings.",
+  "description": "# Redelay Event Source\n\nA single configurable source node that subscribes to any event registered by any Redelay module. Replaces the old pattern of one source node per event type, which caused an N × M explosion as modules and events grew.\n\n## How it works\n\nThe node's `eventName` setting is a JSON Schema enum whose values are injected at spec-build time by walking the live Redelay module registry. Studio renders it as a dropdown — every event declared by any loaded module appears automatically, with no manifest regeneration needed.\n\nThe output port is always the generic `EventMessage` envelope. Per-event payload shape lives in the host server's AsyncAPI document (typically at `/asyncapi.json`). In edge transforms, project payload fields via `{{.payload.*}}`.\n\n## Use cases\n- Trigger flows from any Redelay module event (`users.user_created`, `auth.login_failed`, `orders.placed`, etc.)\n- Run multiple subscribers on the same event with different group IDs\n- Apply server-side filters before the flow wakes (cost-effective fan-out)\n- Bridge AsyncAPI-described events into FlowDSL orchestration without writing a new source node per topic\n\n## Settings\n- **eventName** — the event topic. Enum populated at runtime from the module registry.\n- **groupID** — consumer group (optional). Defaults to a flow-id-scoped auto-generated value, so multiple flows subscribed to the same event each receive their own copy.\n- **filter** — optional server-side filter expression, evaluated by the event bus filter chain before the flow wakes. Reduces wake-ups for high-volume topics.\n\n## Requirements\n- Host server must run the Redelay Go framework with `_ \"github.com/redelay/go-events/module\"` and `_ \"github.com/redelay/go-events/flowdsl\"` blank-imported.\n- Works with any `EventBus` transport: Kafka, NATS, Redis Streams, or in-memory.\n\n## Notes\n- The `eventName` enum is a *live* view of the system — events show up the moment their module is loaded.\n- For per-event payload schemas, consult the running server's AsyncAPI document at `/asyncapi.json` and reference it via `asyncapi:default#/...` in your flow.",
+  "kind": "source",
+  "language": "go",
+  "author": {
+    "name": "Redelay",
+    "url": "https://redelay.com",
+    "email": "nodes@redelay.com"
+  },
+  "license": "Apache-2.0",
+  "repoUrl": "https://github.com/redelay/go-events",
+  "docsUrl": "https://redelay.com/docs/reference/go-events#flowdsl-integration--go-eventsflowdsl",
+  "icon": "📡",
+  "color": "#7C3AED",
+  "tags": [
+    "redelay",
+    "event-bus",
+    "source",
+    "kafka",
+    "nats",
+    "redis",
+    "asyncapi",
+    "trigger",
+    "configurable"
+  ],
+  "runtime": {
+    "handler": "github.com/redelay/go-events/flowdsl.EventSourceNode",
+    "supports": ["proc", "grpc"]
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "name": "Event",
+      "description": "Generic EventMessage envelope emitted when a matching event arrives on the bus. Payload shape depends on the configured eventName — see the host server's AsyncAPI document.",
+      "schema": {
+        "type": "object",
+        "required": [
+          "id",
+          "entity_type",
+          "action",
+          "topic",
+          "payload",
+          "timestamp"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique event ID (typically a UUID)."
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Domain entity the event relates to.",
+            "examples": ["user", "order", "email"]
+          },
+          "action": {
+            "type": "string",
+            "description": "What happened to the entity.",
+            "examples": ["created", "updated", "deleted", "failed"]
+          },
+          "topic": {
+            "type": "string",
+            "description": "Transport topic — matches the configured eventName.",
+            "examples": ["users.user_created", "auth.login_failed"]
+          },
+          "actor": {
+            "type": "object",
+            "description": "Who or what caused the event.",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["user", "system", "service"]
+              },
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "payload": {
+            "type": "object",
+            "description": "Event-specific payload. Shape varies by eventName; consult the AsyncAPI document.",
+            "additionalProperties": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the event was published to the bus."
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "Optional correlation ID for tracing across events and requests."
+          }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "required": ["eventName"],
+    "properties": {
+      "eventName": {
+        "type": "string",
+        "title": "Event Name",
+        "description": "The event to subscribe to. This list is populated at runtime from the live Redelay module registry — every event declared by any loaded module appears here automatically.",
+        "enum": [],
+        "x-ui": {
+          "order": 1,
+          "group": "Subscription",
+          "placeholder": "Select an event…",
+          "dynamic": true,
+          "dynamicSource": "registry.events"
+        }
+      },
+      "groupID": {
+        "type": "string",
+        "title": "Consumer Group",
+        "description": "Consumer group identifier. Multiple subscribers in the same group share load; subscribers in different groups each get their own copy of every event. Leave empty for an auto-generated flow-scoped value.",
+        "x-ui": {
+          "order": 2,
+          "group": "Subscription",
+          "placeholder": "e.g. onboarding-welcome"
+        }
+      },
+      "filter": {
+        "type": "string",
+        "title": "Server-side Filter",
+        "description": "Optional filter expression evaluated by the event bus before the flow wakes. Useful for high-volume topics where most events are irrelevant. Example: payload.total > 100 && actor.type == \"user\"",
+        "x-ui": {
+          "order": 3,
+          "group": "Subscription",
+          "placeholder": "payload.status == \"active\""
+        }
+      }
+    }
+  },
+  "minRuntimeVersion": "1.0.0",
+  "published": true,
+  "publishedAt": "2026-04-14T00:00:00Z",
+  "x-studio": {
+    "lucideIcon": "Radio",
+    "color": "#7C3AED",
+    "packetPreview": {
+      "type": "EventMessage",
+      "fields": [
+        { "name": "topic",       "type": "string", "example": "\"users.user_created\"" },
+        { "name": "entity_type", "type": "string", "example": "\"user\"" },
+        { "name": "action",      "type": "string", "example": "\"created\"" },
+        { "name": "payload",     "type": "object", "example": "{ id, email, name, ... }" },
+        { "name": "actor",       "type": "object", "example": "{ type: \"system\", id: \"...\" }" },
+        { "name": "timestamp",   "type": "string", "example": "\"2026-04-14T10:20:00Z\"" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx ajv:*)",
+      "Bash(make validate:*)",
+      "Bash(make docs:*)",
+      "Bash(make help:*)"
+    ]
+  }
+}

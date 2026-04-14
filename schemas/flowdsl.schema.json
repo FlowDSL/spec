@@ -132,18 +132,46 @@
 
     "ExternalDocs": {
       "type": "object",
-      "description": "Optional links to external specification documents. Declare these only when you want to reference schemas from AsyncAPI or OpenAPI documents using asyncapi#/... or openapi#/... $ref prefixes. FlowDSL documents are fully functional without this field.",
+      "description": "Optional links to external specification documents. Declare these only when you want to reference schemas from AsyncAPI or OpenAPI documents using asyncapi#/... or openapi#/... $ref prefixes. FlowDSL documents are fully functional without this field. Both single-URL and named multi-spec forms are supported.",
       "additionalProperties": false,
       "properties": {
         "asyncapi": {
-          "type": "string",
-          "description": "URL or path to the AsyncAPI document. Used to resolve asyncapi#/... $refs.",
-          "examples": ["/asyncapi.json", "https://api.example.com/asyncapi.json"]
+          "description": "AsyncAPI document(s) used to resolve asyncapi#/... $refs. Single-URL string form (resolves asyncapi#/...) or named map form (resolves asyncapi:name#/...). Use 'default' as the key to keep asyncapi#/... working alongside named specs.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "URL or path to the single AsyncAPI document.",
+              "examples": ["/asyncapi.json", "https://api.example.com/asyncapi.json"]
+            },
+            {
+              "type": "object",
+              "description": "Named map of AsyncAPI documents. Keys become the spec name in asyncapi:name#/... refs. Use 'default' for the unnamed asyncapi#/... ref.",
+              "additionalProperties": { "type": "string" },
+              "minProperties": 1,
+              "examples": [
+                { "default": "/asyncapi.json", "payments": "https://payments.example.com/asyncapi.json" }
+              ]
+            }
+          ]
         },
         "openapi": {
-          "type": "string",
-          "description": "URL or path to the OpenAPI document.",
-          "examples": ["/openapi.json"]
+          "description": "OpenAPI document(s) used to resolve openapi#/... $refs. Single-URL string form (resolves openapi#/...) or named map form (resolves openapi:name#/...). Use 'default' as the key to keep openapi#/... working alongside named specs.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "URL or path to the single OpenAPI document.",
+              "examples": ["/openapi.json"]
+            },
+            {
+              "type": "object",
+              "description": "Named map of OpenAPI documents. Keys become the spec name in openapi:name#/... refs. Use 'default' for the unnamed openapi#/... ref.",
+              "additionalProperties": { "type": "string" },
+              "minProperties": 1,
+              "examples": [
+                { "default": "/openapi.json", "billing": "https://billing.example.com/openapi.json" }
+              ]
+            }
+          ]
         },
         "description": {
           "type": "string"
@@ -492,17 +520,19 @@
 
     "MessageRef": {
       "type": "object",
-      "description": "A reference to a message schema. Resolution order: (1) #/components/events/... — FlowDSL-native event (preferred); (2) #/components/packets/... — raw schema shape; (3) asyncapi#/... or openapi#/... — external import, requires externalDocs. Inline schema is also supported.",
+      "description": "A reference to a message schema. Resolution order: (1) #/components/events/... — FlowDSL-native event (preferred); (2) #/components/packets/... — raw schema shape; (3) asyncapi#/... or openapi#/... — external import (single-spec), requires externalDocs; (4) asyncapi:name#/... or openapi:name#/... — named multi-spec import. Inline schema is also supported.",
       "additionalProperties": false,
       "properties": {
         "$ref": {
           "type": "string",
-          "description": "JSON Reference to a message schema. Prefer local FlowDSL refs. External prefixes asyncapi#/... and openapi#/... are optional integrations requiring externalDocs declaration.",
+          "description": "JSON Reference to a message schema. Prefer local FlowDSL refs (#/components/...). For external specs declared in externalDocs: use openapi#/... or asyncapi#/... for single-spec, or openapi:name#/... / asyncapi:name#/... for named multi-spec.",
           "examples": [
             "#/components/events/UserCreated",
             "#/components/packets/RulePassedDomainPacket",
             "asyncapi#/components/messages/DomainExpiredPayload",
-            "openapi#/components/schemas/Order"
+            "openapi#/components/schemas/Order",
+            "openapi:billing#/components/schemas/Invoice",
+            "asyncapi:payments#/components/messages/PaymentProcessed"
           ]
         },
         "schema": {

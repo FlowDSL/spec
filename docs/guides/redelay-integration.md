@@ -140,6 +140,44 @@ flowchart LR
   D -->|"calls"| E["redelay handlers\n(FlowDSL nodes)"]
 ```
 
+## The Go integration — `redelay/event-source` node
+
+The Go version of redelay ships a single **configurable source node** that
+subscribes to any event on the bus. It lives in `go-events/flowdsl` and is
+registered via a blank import (`_ "github.com/redelay/go-events/flowdsl"`).
+
+Where the old approach required one source node per event type (causing an
+N × M explosion as events and modules grew), the new approach is one node
+whose behavior is parameterized by settings:
+
+```yaml
+on_order_placed:
+  kind: source
+  nodeType: redelay/event-source
+  settings:
+    eventName: orders.order_placed      # enum populated at runtime
+    groupID:   fulfillment-pipeline
+    filter:    "payload.total > 100"    # optional, server-side
+  outputs:
+    - name: Event
+      message:
+        $ref: "asyncapi:default#/components/schemas/EventMessage"
+```
+
+**How Studio sees it.** The `eventName` setting is a JSON Schema enum whose
+values are injected server-side at spec-build time by walking the live module
+registry. Studio users pick the event from a dropdown; new events registered
+by any module appear automatically — no manifest regeneration required.
+
+**Output is always the generic envelope.** The node emits `EventMessage` —
+the common wrapper around every event. Per-event payload shape lives in the
+AsyncAPI document; in FlowDSL flows, project payload fields via
+`{{.payload.*}}` in edge transforms.
+
+The Python SDK (`flowdsl-py`) will mirror this pattern once the Go version
+stabilizes — reach for the same node ID (`redelay/event-source`) with
+equivalent settings.
+
 ## Benefits of the redelay integration
 
 | Benefit | How |

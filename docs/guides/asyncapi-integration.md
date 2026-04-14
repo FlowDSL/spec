@@ -1,6 +1,6 @@
 ---
 title: AsyncAPI ↔ FlowDSL Integration
-description: Full guide to referencing AsyncAPI event contracts in FlowDSL, including schema evolution and breaking change handling.
+description: Full guide to referencing AsyncAPI event contracts in FlowDSL, including multi-document support, schema evolution, and breaking change handling.
 weight: 307
 ---
 
@@ -13,8 +13,8 @@ Use AsyncAPI references when:
 - The same event schemas are consumed by multiple systems (not just FlowDSL)
 - You want AsyncAPI to remain the single source of truth for event contracts
 
-Use native FlowDSL packets when:
-- This flow is the only consumer of these packet schemas
+Use native FlowDSL events/packets when:
+- This flow is the only consumer of these schemas
 - The schemas are internal to the flow and not published to other teams
 - You are early in development and want to iterate quickly
 
@@ -22,45 +22,62 @@ Use native FlowDSL packets when:
 
 ### 1. Link the AsyncAPI document
 
+Declare the AsyncAPI document under `externalDocs`:
+
 ```yaml
-flowdsl: "1.0"
+flowdsl: "1.0.0"
 info:
   title: Order Processing
   version: "1.0.0"
 
-# Path or URL to the AsyncAPI document
-asyncapi: "./events.asyncapi.yaml"
-
 externalDocs:
-  url: https://github.com/myorg/event-schemas/blob/main/asyncapi.yaml
+  asyncapi: "./events.asyncapi.yaml"
   description: AsyncAPI event schema definitions (v2.6)
 ```
 
-### 2. Reference AsyncAPI messages
+The `externalDocs.asyncapi` value is either a URL/path string (single document) or a named map for multiple documents (see [Multiple AsyncAPI documents](#multiple-asyncapi-documents) below).
 
-```yaml
-nodes:
-  OrderReceived:
-    operationId: receive_order
-    kind: source
-    outputs:
-      out:
-        packet: "asyncapi#/components/messages/OrderPlaced"
+### 2. Reference AsyncAPI messages in events
 
-edges:
-  - from: OrderReceived
-    to: ValidateOrder
-    delivery:
-      mode: durable
-      packet: "asyncapi#/components/messages/OrderPlaced"
-```
-
-### 3. Mix with native packets
+The recommended pattern is to wrap AsyncAPI message references in a FlowDSL `components.events` definition. This keeps all node ports using stable `#/components/events/...` refs:
 
 ```yaml
 components:
+  events:
+    OrderPlaced:
+      name: OrderPlaced
+      version: "1.0.0"
+      entityType: order
+      action: placed
+      payload:
+        $ref: "asyncapi#/components/messages/OrderPlaced"
+```
+
+Then reference the event on node ports:
+
+```yaml
+flows:
+  order_pipeline:
+    entrypoints:
+      - message:
+          $ref: "#/components/events/OrderPlaced"
+    nodes:
+      validate_order:
+        $ref: "#/components/nodes/ValidateOrderNode"
+```
+
+### 3. Mix with native events and packets
+
+```yaml
+components:
+  events:
+    # Boundary event — payload owned by AsyncAPI
+    OrderPlaced:
+      payload:
+        $ref: "asyncapi#/components/messages/OrderPlaced"
+
   packets:
-    # Internal intermediate packet — not in AsyncAPI
+    # Internal packet — not in AsyncAPI
     ValidationResult:
       type: object
       properties:
@@ -68,28 +85,57 @@ components:
         isValid: { type: boolean }
         errors: { type: array, items: { type: string } }
       required: [orderId, isValid]
-
-edges:
-  - from: ValidateOrder
-    to: ChargePayment
-    delivery:
-      packet: ValidationResult    # Native packet
 ```
+
+## Multiple AsyncAPI documents
+
+When your architecture spans multiple services, each with its own AsyncAPI document, use the named map form:
+
+```yaml
+externalDocs:
+  asyncapi:
+    default: "./events.asyncapi.yaml"
+    payments: "https://payments.example.com/asyncapi.json"
+    inventory: "https://inventory.example.com/asyncapi.json"
+```
+
+Reference messages from named documents using the `asyncapi:name#/...` syntax:
+
+```yaml
+components:
+  events:
+    # From the default doc — asyncapi#/...
+    OrderPlaced:
+      payload:
+        $ref: "asyncapi#/components/messages/OrderPlaced"
+
+    # From the 'payments' doc — asyncapi:payments#/...
+    PaymentProcessed:
+      payload:
+        $ref: "asyncapi:payments#/components/messages/PaymentProcessed"
+
+    # From the 'inventory' doc — asyncapi:inventory#/...
+    StockReserved:
+      payload:
+        $ref: "asyncapi:inventory#/components/messages/StockReserved"
+```
+
+| `externalDocs.asyncapi` key | `$ref` prefix |
+|----------------------------|---------------|
+| `default` | `asyncapi#/...` |
+| `payments` | `asyncapi:payments#/...` |
+| `inventory` | `asyncapi:inventory#/...` |
 
 ## Runtime resolution
 
 At startup, the runtime:
 
-1. Reads the `asyncapi` field and loads the document (local file or HTTP URL)
-2. For each `asyncapi#/...` reference, extracts the `payload` schema from the referenced message
-3. Compiles the resolved JSON Schema for packet validation
-4. Validates all packets against their compiled schemas at runtime
+1. Reads `externalDocs.asyncapi` and loads the document(s) — local file or HTTP URL
+2. For each `asyncapi#/...` or `asyncapi:name#/...` reference, resolves the JSON Pointer in the appropriate document
+3. Extracts the `payload` schema from the referenced message
+4. Compiles the resolved JSON Schema for type validation
 
-If the AsyncAPI document is at an HTTP URL, the runtime fetches it once at startup and caches it:
-
-```yaml
-asyncapi: https://api.mycompany.com/asyncapi.yaml
-```
+If a document is at an HTTP URL, the runtime fetches it once at startup and caches it.
 
 ## Handling schema evolution
 
@@ -106,7 +152,6 @@ These changes will cause packet validation failures:
 - Removing required fields
 - Renaming fields
 - Changing field types
-- Changing `required` arrays
 
 **Recommended approach:**
 
@@ -124,11 +169,15 @@ components:
 2. **Version the reference in FlowDSL:**
 
 ```yaml
-# old-flow.flowdsl.yaml
-packet: "asyncapi#/components/messages/OrderPlacedV1"
+# old event definition
+OrderPlaced:
+  payload:
+    $ref: "asyncapi#/components/messages/OrderPlacedV1"
 
-# new-flow.flowdsl.yaml
-packet: "asyncapi#/components/messages/OrderPlacedV2"
+# new event definition
+OrderPlaced:
+  payload:
+    $ref: "asyncapi#/components/messages/OrderPlacedV2"
 ```
 
 3. Deploy the new FlowDSL flow before stopping the old one to avoid gaps.
@@ -146,17 +195,17 @@ flowdsl validate order-processing.flowdsl.yaml
 ```
 
 The FlowDSL validator fails if:
-- The `asyncapi` file cannot be found or loaded
+- The referenced AsyncAPI file cannot be found or loaded
 - An `asyncapi#/...` JSON Pointer doesn't resolve to a valid message
 - The resolved message has no `payload` field
 
 ## Summary
 
-- Link AsyncAPI with `asyncapi: "./path/or/url"` at the document level
-- Reference messages with `asyncapi#/components/messages/MessageName`
-- Mix native and AsyncAPI packets freely
+- Link AsyncAPI with `externalDocs.asyncapi: "./path/or/url"` (single doc) or a named map (multiple docs)
+- Reference messages with `asyncapi#/components/messages/MessageName` (default doc) or `asyncapi:name#/...` (named doc)
+- Wrap AsyncAPI refs in `components.events` to keep node ports stable
+- Mix native and AsyncAPI schemas freely
 - Version AsyncAPI messages to handle breaking schema changes safely
-- Both documents validate independently; FlowDSL also validates reference paths
 
 ## Next steps
 

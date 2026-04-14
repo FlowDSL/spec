@@ -87,29 +87,51 @@ components:
 Reference a message schema from a linked AsyncAPI document:
 
 ```yaml
-asyncapi: "./events.asyncapi.yaml"
+externalDocs:
+  asyncapi: "./events.asyncapi.yaml"
 
-edges:
-  - from: OrderReceived
-    to: ValidateOrder
-    delivery:
-      mode: durable
-      packet: "asyncapi#/components/messages/OrderPlaced"
+components:
+  events:
+    OrderPlaced:
+      payload:
+        $ref: "asyncapi#/components/messages/OrderPlaced"
 ```
 
 The `asyncapi#/...` syntax is a JSON Pointer path into the AsyncAPI document. The runtime resolves it to the message's `payload` schema.
+
+For multiple AsyncAPI documents, use the named form:
+
+```yaml
+externalDocs:
+  asyncapi:
+    default: "./events.asyncapi.yaml"
+    payments: "https://payments.example.com/asyncapi.json"
+
+components:
+  events:
+    PaymentProcessed:
+      payload:
+        $ref: "asyncapi:payments#/components/messages/PaymentProcessed"
+```
 
 ## Packet reference on a node port
 
 ```yaml
 nodes:
-  ValidateOrder:
+  ValidateOrderNode:
+    operationId: validate_order
+    kind: transform
+    runtime:
+      language: go
+      handler: nodes.ValidateOrderNode
     inputs:
-      in:
-        packet: OrderPayload          # Native packet reference
+      - message:
+          schema:
+            $ref: "#/components/packets/OrderPayload"    # Native packet reference
     outputs:
-      out:
-        packet: "asyncapi#/components/messages/OrderValidated"  # AsyncAPI reference
+      - name: Validated
+        message:
+          $ref: "#/components/events/OrderValidated"    # FlowDSL event reference
 ```
 
 ## Naming convention

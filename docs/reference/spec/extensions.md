@@ -72,6 +72,45 @@ nodes:
       oncall: payments-oncall@pagerduty.com
 ```
 
+### `x-profile-kind` / `x-overrides` / `x-manage-profiles-url` (on settings schema properties)
+
+Node settings-schema hints that turn a string property into a **profile picker** — a dropdown whose enum is populated at runtime with named config presets the operator has saved for this kind. When a value is selected, Studio hides the sibling fields listed in `x-overrides` from the Inspector and surfaces a banner linking to `x-manage-profiles-url`:
+
+```yaml
+flowdsl_nodes:
+  - id: redelay/llm-chat
+    settings_schema:
+      type: object
+      properties:
+        profile:
+          type: string
+          x-profile-kind: llm-chat                # which profile kind to list
+          x-overrides:                            # keys hidden while a profile is selected
+            - providerID
+            - model
+            - temperature
+            - systemPrompt
+          x-manage-profiles-url: /profiles        # banner link target
+          enum: []                                # populated at spec-build time
+        providerID:
+          type: string
+          enum: []
+        model:
+          type: string
+        temperature:
+          type: number
+        stream:
+          type: boolean                           # not listed in x-overrides → always visible
+```
+
+| Field | Type | On | Description |
+|---|---|---|---|
+| `x-profile-kind` | string | a `string`-typed property | Identifies the profile kind this selector consumes. The host app populates `enum` with saved profile ids for that kind. |
+| `x-overrides` | string[] | the profile-picker property | Keys of sibling properties whose values the profile supplies. Studio hides those rows when a profile is selected. |
+| `x-manage-profiles-url` | string | the profile-picker property | URL the Inspector's banner links to. Typically `/profiles` in a Redelay admin. |
+
+Studio renders a single profile picker at the top of the Inspector, shows a *"Profile 'X' supplies N settings for this node"* banner when one is selected, and keeps the non-overridden fields (e.g. `stream`) visible regardless. Runtime merges the profile's config into blank node fields; any explicitly-set field wins over the profile.
+
 ### `x-runtime` (on edges)
 
 Infrastructure binding overrides. See [Runtime Bindings reference](/docs/reference/spec/runtime-bindings) for details.

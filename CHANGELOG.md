@@ -17,6 +17,7 @@ FlowDSL follows [Semantic Versioning](https://semver.org/).
 - NodeRuntime.invocation enum expanded to support 9 transport protocols
 
 ### Added
+- `x-profile-kind`, `x-overrides`, `x-manage-profiles-url` extension fields on `settings_schema` properties. Turn a string property into a profile picker whose enum is populated at runtime with named config presets; Studio hides the sibling keys listed in `x-overrides` when a profile is selected and surfaces a banner linking to the admin URL. Runtime merges the selected profile's config into blank node fields; explicit fields still win. See [extensions reference](docs/reference/spec/extensions.md#x-profile-kind--x-overrides--x-manage-profiles-url-on-settings-schema-properties).
 - `schemas/node.proto` — canonical gRPC NodeService contract v1.0.0
 - NodeRuntime.grpc configuration object (port, streaming, maxConcurrentStreams, tls)
 - NodeRuntime.nats configuration object (url, subject, queueGroup)

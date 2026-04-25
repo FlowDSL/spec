@@ -1,0 +1,213 @@
+{
+  "flowdsl": "1.0.0",
+  "info": {
+    "title": "AI Chat with Tools",
+    "version": "1.0.0",
+    "description": "Receives a chat message via HTTP, sends it to an LLM, routes tool calls to an HTTP fetcher, and returns the final response."
+  },
+  "flows": {
+    "assistant_chat": {
+      "summary": "AI chat flow with tool calling",
+      "description": "An HTTP source receives chat requests. The LLM analyzes the message and either responds directly or invokes a tool (HTTP fetch). Tool results feed back into the LLM for a final answer.",
+      "entrypoints": ["http_source"],
+      "nodes": {
+        "http_source": {
+          "$ref": "#/components/nodes/HttpSourceNode"
+        },
+        "llm_chat": {
+          "$ref": "#/components/nodes/LLMChatNode"
+        },
+        "tool_router": {
+          "$ref": "#/components/nodes/ToolRouterNode"
+        },
+        "http_tool": {
+          "$ref": "#/components/nodes/HttpToolNode"
+        },
+        "response_out": {
+          "$ref": "#/components/nodes/ResponseOutNode"
+        }
+      },
+      "edges": [
+        {
+          "from": "http_source",
+          "to": "llm_chat",
+          "packet": "#/components/packets/ChatRequest",
+          "description": "Forward user message to LLM",
+          "delivery": { "mode": "direct" }
+        },
+        {
+          "from": "llm_chat",
+          "to": "tool_router",
+          "packet": "#/components/packets/LLMResponse",
+          "description": "Route LLM output based on tool calls",
+          "delivery": { "mode": "direct" }
+        },
+        {
+          "from": "tool_router",
+          "to": "http_tool",
+          "packet": "#/components/packets/ToolCall",
+          "when": "output.toolCalls.length > 0",
+          "description": "Execute HTTP tool call",
+          "delivery": { "mode": "ephemeral", "backend": "redis" }
+        },
+        {
+          "from": "tool_router",
+          "to": "response_out",
+          "packet": "#/components/packets/ChatMessage",
+          "when": "output.toolCalls.length == 0",
+          "description": "Direct LLM reply to output",
+          "delivery": { "mode": "direct" }
+        },
+        {
+          "from": "http_tool",
+          "to": "llm_chat",
+          "packet": "#/components/packets/ChatRequest",
+          "description": "Feed tool results back to LLM for final answer",
+          "delivery": { "mode": "ephemeral", "backend": "redis" }
+        }
+      ]
+    }
+  },
+  "components": {
+    "packets": {
+      "ChatRequest": {
+        "type": "object",
+        "description": "Incoming chat request with message history",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "description": "Conversation history as role/content pairs",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": { "type": "string", "enum": ["user", "assistant", "system", "tool"] },
+                "content": { "type": "string" }
+              },
+              "required": ["role", "content"]
+            }
+          },
+          "model": { "type": "string", "description": "LLM model to use (optional override)" },
+          "sessionId": { "type": "string", "description": "Session identifier for conversation continuity" }
+        },
+        "required": ["messages"]
+      },
+      "ChatMessage": {
+        "type": "object",
+        "description": "A single chat message",
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant", "system", "tool"] },
+          "content": { "type": "string", "description": "Message content" },
+          "sessionId": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        },
+        "required": ["role", "content"]
+      },
+      "LLMResponse": {
+        "type": "object",
+        "description": "Response from the LLM, may include tool calls",
+        "properties": {
+          "content": { "type": "string", "description": "Text response from the LLM" },
+          "toolCalls": {
+            "type": "array",
+            "description": "Tool invocations requested by the LLM",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "arguments": { "type": "object" }
+              },
+              "required": ["id", "name"]
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "promptTokens": { "type": "number" },
+              "completionTokens": { "type": "number" },
+              "totalTokens": { "type": "number" }
+            }
+          }
+        },
+        "required": ["content"]
+      },
+      "ToolCall": {
+        "type": "object",
+        "description": "A single tool invocation to execute",
+        "properties": {
+          "id": { "type": "string", "description": "Tool call ID from the LLM" },
+          "name": { "type": "string", "description": "Tool function name" },
+          "arguments": { "type": "object", "description": "Arguments for the tool call" },
+          "sessionId": { "type": "string" }
+        },
+        "required": ["id", "name"]
+      }
+    },
+    "nodes": {
+      "HttpSourceNode": {
+        "operationId": "flowdsl/http-source",
+        "title": "Chat API",
+        "summary": "Receives chat messages via HTTP POST",
+        "kind": "source",
+        "x-ui": {
+          "icon": "Globe",
+          "color": "#3B82F6",
+          "position": { "x": 300, "y": 60 },
+          "registryId": "flowdsl/http-source"
+        }
+      },
+      "LLMChatNode": {
+        "operationId": "llm_chat",
+        "title": "LLM Chat",
+        "summary": "Send conversation to the LLM and get a response with optional tool calls",
+        "kind": "llm",
+        "x-ui": {
+          "icon": "Bot",
+          "color": "#8B5CF6",
+          "position": { "x": 300, "y": 220 },
+          "registryId": "llm-analyzer"
+        }
+      },
+      "ToolRouterNode": {
+        "operationId": "route_tools",
+        "title": "Tool Router",
+        "summary": "Routes to tool execution if tool calls present, otherwise to response",
+        "kind": "router",
+        "x-ui": {
+          "icon": "GitFork",
+          "color": "#F59E0B",
+          "position": { "x": 300, "y": 380 },
+          "registryId": "llm-router"
+        }
+      },
+      "HttpToolNode": {
+        "operationId": "execute_http_tool",
+        "title": "HTTP Tool",
+        "summary": "Execute HTTP requests as tool calls for the LLM",
+        "kind": "integration",
+        "execution": {
+          "timeoutMs": 15000,
+          "maxRetries": 2
+        },
+        "x-ui": {
+          "icon": "Globe",
+          "color": "#14B8A6",
+          "position": { "x": 120, "y": 540 },
+          "registryId": "http-fetcher"
+        }
+      },
+      "ResponseOutNode": {
+        "operationId": "send_response",
+        "title": "Response",
+        "summary": "Return the final chat response to the caller",
+        "kind": "terminal",
+        "x-ui": {
+          "icon": "Flag",
+          "color": "#EF4444",
+          "position": { "x": 480, "y": 540 },
+          "registryId": "email-sender"
+        }
+      }
+    }
+  }
+}

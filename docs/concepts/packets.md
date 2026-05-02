@@ -79,6 +79,35 @@ edges:
 
 The runtime resolves the reference by loading the AsyncAPI document and extracting the message schema at the given JSON Pointer path. The packet is validated at runtime against the resolved schema.
 
+## Namespaced refs (Redelay / Studio convention)
+
+When a project loads multiple specs (typical Redelay setup: an
+`/openapi.json` + an `/asyncapi.json` + the document's own packets),
+refs need a namespace so the resolver knows which spec to consult.
+Studio + Redelay use the form `<spec-name>#/components/...`:
+
+| Form | Resolved against |
+|---|---|
+| `#/components/packets/UserCreateInput` | The flow document's own `components.packets` |
+| `openapi:default#/components/schemas/UserCreateInput` | The project's `/openapi.json` |
+| `asyncapi:default#/components/schemas/UserCreatedPayload` | The project's `/asyncapi.json` |
+
+The `:default` suffix names the spec instance — projects with
+multiple loaded OpenAPI documents (e.g. an internal-API spec + a
+public-API spec) can disambiguate via different names. The vast
+majority use only `:default`.
+
+::callout{icon="i-lucide-info"}
+**Namespace stripping at OpenAPI emission.** When Redelay emits a
+flow's packet ref into `/openapi.json` (e.g. as a request-body
+schema for a flow-driven HTTP endpoint), the dispatcher strips the
+`openapi:default#` namespace so the published ref is a
+standards-compliant local in-document ref:
+`{"$ref": "#/components/schemas/UserCreateInput"}`. Without this,
+Scalar / Swagger UI / SDK generators fail with
+`Could not resolve reference: Failed to fetch`.
+::
+
 ## Packet naming
 
 | Convention | Correct | Incorrect |

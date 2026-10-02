@@ -392,4 +392,4 @@ func main() {
 
 - [Write a Go Node tutorial](/docs/tutorials/writing-a-go-node) — full step-by-step guide
 - [Python SDK](/docs/tools/python-sdk) — Python equivalent
-- [FlowDSL Specification](/docs/reference/specification) — the canonical spec
+- [FlowDSL Specification](/docs/reference/spec/flowdsl-document) — the canonical spec

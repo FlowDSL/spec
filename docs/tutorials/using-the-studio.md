@@ -25,7 +25,6 @@ open http://localhost:5173
 
 ## The canvas
 
-![Studio canvas overview](/img/docs/studio-canvas-overview.png)
 
 The canvas has four areas:
 
@@ -54,7 +53,6 @@ Edit the `.flowdsl.yaml` file directly. Studio reloads automatically if the file
 3. A dialog appears to configure the edge's delivery policy
 4. Select the delivery mode and configure optional fields (packet, retry policy, idempotency key)
 
-![Drawing an edge in Studio](/img/docs/studio-draw-edge.png)
 
 ## Setting delivery modes on edges
 
@@ -85,7 +83,6 @@ The validator runs the FlowDSL JSON Schema check plus semantic rules:
 
 A green **Valid** badge appears on success. Errors appear in the validation panel with line numbers pointing to the YAML.
 
-![Validation panel showing errors](/img/docs/studio-validation-errors.png)
 
 ## Exporting
 
@@ -123,7 +120,6 @@ When the runtime is running locally (requires [Docker Compose Local](/docs/tutor
 - Dead letter queue inspection
 - Retry count per edge
 
-![Execution monitor in Studio](/img/docs/studio-execution-monitor.png)
 
 ## Keyboard shortcuts
 

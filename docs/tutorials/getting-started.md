@@ -65,7 +65,6 @@ flowdsl-runtime   healthy   0.0.0.0:8081->8081/tcp
 
 Navigate to [http://localhost:5173](http://localhost:5173) in your browser.
 
-![Studio welcome screen](/img/docs/getting-started-studio-welcome.png)
 
 You'll see the Studio canvas — an empty graph editor with a toolbar at the top and a node palette on the right.
 
@@ -73,7 +72,6 @@ You'll see the Studio canvas — an empty graph editor with a toolbar at the top
 
 Click **File → Open Example → Order Fulfillment** or drag the file `examples/order-fulfillment/order-fulfillment.flowdsl.yaml` into the Studio canvas.
 
-![Studio with Order Fulfillment flow loaded](/img/docs/getting-started-studio.png)
 
 You'll see five nodes laid out on the canvas:
 

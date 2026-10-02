@@ -57,4 +57,4 @@ edges:
 
 - [Core Concepts](/docs/concepts)
 - [Delivery Modes](/docs/delivery-modes)
-- [AsyncAPI Integration](/docs/asyncapi)
+- [AsyncAPI Integration](/docs/guides/asyncapi-integration)
